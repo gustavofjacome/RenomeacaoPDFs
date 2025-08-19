@@ -26,8 +26,9 @@ projeto/
 ### 1. Clone o Repositório
 
 ```bash
-git clone colocar link
-cd nome da pasta q ainda n sei
+git clone https://github.com/gustavofjacome/RenomeacaoPDFs
+cd nome RenomeacaoPDFs
+
 ```
 
 ### 2. Instale as Dependências
