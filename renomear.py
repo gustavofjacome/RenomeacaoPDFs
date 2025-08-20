@@ -2,59 +2,79 @@ import os
 import subprocess
 import pandas as pd
 import re
+import time
 from pathlib import Path
 import sys
 
 
 def limpar_nome_arquivo(nome):
-    """
-    Remove ou substitui caracteres inválidos para nomes de arquivos no Windows.
-    
-    Args:
-        nome (str): Nome original que pode conter caracteres inválidos
-        
-    Returns:
-        str: Nome limpo, seguro para usar como nome de arquivo
-    """
-    # Define os caracteres inválidos no Windows:
     caracteres_invalidos = r'[/\\:*?"<>|]'
-    
-    # Substitui caracteres inválidos por hífen
     nome_limpo = re.sub(caracteres_invalidos, '-', nome)
-    
-    # Remove espaços extras e caracteres de controle
     nome_limpo = ' '.join(nome_limpo.split())
-    
-    # Remove pontos no final (não permitidos no Windows)
     nome_limpo = nome_limpo.rstrip('.')
-    
-    # Limita o tamanho do nome
     if len(nome_limpo) > 200:
         nome_limpo = nome_limpo[:200].rstrip()
-    
     return nome_limpo
 
 
+def trazer_terminal_para_frente():
+    try:
+        powershell_cmd = '''
+        Add-Type -TypeDefinition '
+        using System;
+        using System.Runtime.InteropServices;
+        public class Win32 {
+            [DllImport("user32.dll")]
+            public static extern IntPtr GetForegroundWindow();
+            [DllImport("user32.dll")]
+            public static extern bool SetForegroundWindow(IntPtr hWnd);
+            [DllImport("user32.dll")]
+            public static extern bool BringWindowToTop(IntPtr hWnd);
+            [DllImport("user32.dll")]
+            public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+            [DllImport("kernel32.dll")]
+            public static extern IntPtr GetConsoleWindow();
+            [DllImport("user32.dll")]
+            public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+        }';
+        $consoleWindow = [Win32]::GetConsoleWindow();
+        if ($consoleWindow -ne [IntPtr]::Zero) {
+            [Win32]::ShowWindow($consoleWindow, 9);
+            [Win32]::BringWindowToTop($consoleWindow);
+            [Win32]::SetForegroundWindow($consoleWindow);
+            Start-Sleep -Milliseconds 200;
+            [Win32]::SetForegroundWindow($consoleWindow);
+        }
+        '''
+        
+        subprocess.run([
+            "powershell", "-WindowStyle", "Hidden", "-Command", powershell_cmd
+        ], capture_output=True, timeout=5)
+        
+    except Exception:
+        try:
+            subprocess.run([
+                "powershell", "-WindowStyle", "Hidden", "-Command",
+                "$console = [console]::WindowHeight; " +
+                "Add-Type -AssemblyName Microsoft.VisualBasic; " +
+                "[Microsoft.VisualBasic.Interaction]::AppActivate((Get-Process -Name cmd,powershell,WindowsTerminal -ErrorAction SilentlyContinue | Select-Object -First 1).Id); " +
+                "Start-Sleep -Milliseconds 300"
+            ], capture_output=True, timeout=5)
+        except:
+            pass
+
+
 def verificar_estrutura_pastas():
-    """
-    Verifica se a estrutura de pastas e arquivos necessários existe.
-    
-    Returns:
-        tuple: (sucesso: bool, mensagem: str)
-    """
     script_dir = Path(__file__).parent
     
-    # Verifica se a planilha existe
     planilha_path = script_dir / "nomes.xlsx"
     if not planilha_path.exists():
         return False, f"Planilha 'nomes.xlsx' não encontrada em: {planilha_path}"
     
-    # Verifica se a pasta pdfs existe
     pdfs_dir = script_dir / "pdfs"
     if not pdfs_dir.exists():
         return False, f"Pasta 'pdfs' não encontrada em: {pdfs_dir}"
     
-    # Verifica se há arquivos PDF na pasta
     pdf_files = list(pdfs_dir.glob("*.pdf"))
     if not pdf_files:
         return False, f"Nenhum arquivo PDF encontrado na pasta: {pdfs_dir}"
@@ -63,23 +83,12 @@ def verificar_estrutura_pastas():
 
 
 def carregar_nomes_planilha():
-    """
-    Carrega a lista de nomes da primeira coluna da planilha Excel.
-    
-    Returns:
-        tuple: (sucesso: bool, dados: list ou mensagem_erro: str)
-    """
     try:
         script_dir = Path(__file__).parent
         planilha_path = script_dir / "nomes.xlsx"
         
-        # Lê a planilha Excel
         df = pd.read_excel(planilha_path, engine='openpyxl')
-        
-        # Pega a primeira coluna
         primeira_coluna = df.iloc[:, 0]
-        
-        # Remove valores vazios/nulos e converte para lista
         nomes = primeira_coluna.dropna().astype(str).tolist()
         
         if not nomes:
@@ -92,97 +101,65 @@ def carregar_nomes_planilha():
 
 
 def obter_arquivos_pdf():
-    """
-    Obtém lista ordenada de arquivos PDF na pasta 'pdfs'.
-    Ordena numericamente baseado no padrão .001.pdf, .002.pdf, etc.
-    
-    Returns:
-        list: Lista de caminhos dos arquivos PDF ordenados
-    """
     script_dir = Path(__file__).parent
     pdfs_dir = script_dir / "pdfs"
     
-    # Busca todos os arquivos PDF
     pdf_files = list(pdfs_dir.glob("*.pdf"))
     
     def extrair_numero(arquivo):
-        """Extrai número do nome do arquivo para ordenação"""
         nome = arquivo.stem
         numeros = re.findall(r'\d+', nome)
         return int(numeros[0]) if numeros else 0
     
-    # Ordena os arquivos numericamente
     pdf_files.sort(key=extrair_numero)
     
     return pdf_files
 
 
 def abrir_pdf(caminho_pdf):
-    """
-    Abre o arquivo PDF no visualizador padrão do sistema.
-    
-    Args:
-        caminho_pdf (Path): Caminho para o arquivo PDF
-        
-    Returns:
-        bool: True se conseguiu abrir, False caso contrário
-    """
     try:
-        # Tenta abrir com o comando 'start' do Windows
-        subprocess.run(['start', str(caminho_pdf)], shell=True, check=True)
+        os.startfile(str(caminho_pdf))
         return True
-    except subprocess.CalledProcessError:
+    except Exception:
         try:
-            # Alternativa: usar os.startfile (específico do Windows)
-            os.startfile(str(caminho_pdf))
+            subprocess.run(['start', str(caminho_pdf)], shell=True, check=True)
             return True
         except Exception:
             return False
 
 
 def obter_resposta_usuario(nome_esperado, arquivo_atual):
-    """
-    Solicita confirmação do usuário se o PDF corresponde ao nome esperado.
-    
-    Args:
-        nome_esperado (str): Nome esperado da planilha
-        arquivo_atual (Path): Caminho do arquivo PDF atual
-        
-    Returns:
-        str: 's' para sim, 'n' para não
-    """
     print(f"\n{'='*60}")
     print(f"Arquivo atual: {arquivo_atual.name}")
     print(f"Nome esperado: {nome_esperado}")
     print(f"{'='*60}")
     
     while True:
-        resposta = input("Este PDF corresponde ao nome esperado? (s/n): ").lower().strip()
+        print("\nOpcoes:")
+        print("  's' = Sim, renomear este arquivo")
+        print("  'n' = Nao, parar processo completamente")
+        print("  'p' = Pular este arquivo e continuar")
+        print("  'q' = Sair do programa")
+        
+        resposta = input("\nEste PDF corresponde ao nome esperado? (s/n/p/q): ").lower().strip()
+        
         if resposta in ['s', 'sim', 'y', 'yes']:
             return 's'
         elif resposta in ['n', 'não', 'nao', 'no']:
             return 'n'
+        elif resposta in ['p', 'pular', 'skip']:
+            return 'p'
+        elif resposta in ['q', 'quit', 'sair']:
+            return 'q'
         else:
-            print("Por favor, responda 's' para sim ou 'n' para não.")
+            print("\nResposta invalida! Use: s, n, p ou q")
 
 
 def renomear_arquivo(arquivo_original, novo_nome):
-    """
-    Renomeia o arquivo PDF com o novo nome.
-    
-    Args:
-        arquivo_original (Path): Caminho do arquivo original
-        novo_nome (str): Novo nome (sem extensão)
-        
-    Returns:
-        tuple: (sucesso: bool, mensagem: str)
-    """
     try:
-        # Limpa o nome e adiciona extensão .pdf
         nome_limpo = limpar_nome_arquivo(novo_nome)
         novo_caminho = arquivo_original.parent / f"{nome_limpo}.pdf"
         
-        # Verifica se já existe um arquivo com esse nome
         contador = 1
         caminho_final = novo_caminho
         while caminho_final.exists():
@@ -190,7 +167,6 @@ def renomear_arquivo(arquivo_original, novo_nome):
             caminho_final = arquivo_original.parent / f"{nome_com_contador}.pdf"
             contador += 1
         
-        # Renomeia o arquivo
         arquivo_original.rename(caminho_final)
         
         return True, f"Arquivo renomeado para: {caminho_final.name}"
@@ -200,104 +176,133 @@ def renomear_arquivo(arquivo_original, novo_nome):
 
 
 def main():
-    """
-    Função principal do programa.
-    Coordena todo o fluxo de renomeação dos arquivos.
-    """
-    print("🔄 Iniciando Renomeador Automático de PDFs...")
+    print("[INICIO] Renomeador Automatico de PDFs - Windows 10")
     print("=" * 60)
     
-    # Verifica estrutura de pastas
-    print("📁 Verificando estrutura de pastas...")
+    print("[CHECK] Verificando estrutura de pastas...")
     sucesso, mensagem = verificar_estrutura_pastas()
     if not sucesso:
-        print(f"❌ Erro: {mensagem}")
+        print(f"[ERRO] {mensagem}")
         input("Pressione Enter para sair...")
         return
-    print(f"✅ {mensagem}")
+    print(f"[OK] {mensagem}")
     
-    # Carrega nomes da planilha
-    print("\n📊 Carregando nomes da planilha...")
+    print("\n[CHECK] Carregando nomes da planilha...")
     sucesso, resultado = carregar_nomes_planilha()
     if not sucesso:
-        print(f"❌ Erro: {resultado}")
+        print(f"[ERRO] {resultado}")
         input("Pressione Enter para sair...")
         return
     nomes = resultado
-    print(f"✅ {len(nomes)} nomes carregados da planilha")
+    print(f"[OK] {len(nomes)} nomes carregados da planilha")
     
-    # Obtém arquivos PDF
-    print("\n📄 Buscando arquivos PDF...")
+    print("\n[CHECK] Buscando arquivos PDF...")
     arquivos_pdf = obter_arquivos_pdf()
-    print(f"✅ {len(arquivos_pdf)} arquivos PDF encontrados")
+    print(f"[OK] {len(arquivos_pdf)} arquivos PDF encontrados")
     
-    # Verifica correspondência entre nomes e arquivos
     if len(nomes) != len(arquivos_pdf):
-        print(f"\n⚠️  Atenção: {len(nomes)} nomes na planilha vs {len(arquivos_pdf)} PDFs encontrados")
+        print(f"\n[AVISO] {len(nomes)} nomes na planilha vs {len(arquivos_pdf)} PDFs encontrados")
         continuar = input("Deseja continuar mesmo assim? (s/n): ").lower().strip()
         if continuar not in ['s', 'sim', 'y', 'yes']:
-            print("Operação cancelada.")
+            print("[CANCELADO] Operacao cancelada pelo usuario.")
             return
     
-    # Processo principal de renomeação
-    print(f"\n🚀 Iniciando processo de renomeação...")
-    print("📝 Para cada PDF, confirme se corresponde ao nome esperado:")
-    print("   's' = Sim, renomear")
-    print("   'n' = Não, parar processo")
+    print(f"\n[INICIO] Processo de renomeacao iniciado...")
+    print("-" * 60)
     
     total_renomeados = 0
+    total_pulados = 0
+    arquivos_pulados = []
     
-    # Loop principal - processa cada PDF
     for i, (arquivo_pdf, nome_esperado) in enumerate(zip(arquivos_pdf, nomes), 1):
-        print(f"\n📄 Processando {i}/{min(len(arquivos_pdf), len(nomes))}")
+        print(f"\n[{i:03d}/{min(len(arquivos_pdf), len(nomes)):03d}] PROCESSANDO")
+        print(f">> Arquivo: {arquivo_pdf.name}")
+        print(f">> Nome esperado: {nome_esperado}")
         
-        # Abre o PDF para visualização
-        print(f"🔍 Abrindo PDF: {arquivo_pdf.name}")
+        print("[ACAO] Abrindo PDF...")
         if not abrir_pdf(arquivo_pdf):
-            print("⚠️  Não foi possível abrir o PDF automaticamente.")
-            print(f"   Abra manualmente: {arquivo_pdf}")
+            print("[ERRO] Nao foi possivel abrir o PDF automaticamente.")
+            print(f"       Abra manualmente: {arquivo_pdf}")
         
-        # Aguarda o usuário visualizar o PDF
-        input("\n⏳ Pressione Enter quando o PDF estiver aberto e você puder visualizá-lo...")
+        print("[AGUARDE] PDF abrindo...")
+        time.sleep(0.8)
         
-        # Solicita confirmação do usuário
+        print("[ACAO] Trazendo terminal para frente...")
+        trazer_terminal_para_frente()
+        time.sleep(0.3)
+        
+        trazer_terminal_para_frente()
+        
+        input("\n[PAUSA] Pressione Enter quando o PDF estiver aberto...")
+        
         resposta = obter_resposta_usuario(nome_esperado, arquivo_pdf)
         
         if resposta == 's':
-            # Renomeia o arquivo
             sucesso, mensagem = renomear_arquivo(arquivo_pdf, nome_esperado)
             if sucesso:
-                print(f"✅ {mensagem}")
+                print(f"[SUCESSO] {mensagem}")
                 total_renomeados += 1
             else:
-                print(f"❌ {mensagem}")
+                print(f"[ERRO] {mensagem}")
                 break
+                
+        elif resposta == 'p':
+            print(f"[PULADO] Arquivo {arquivo_pdf.name} foi pulado")
+            
+            info_pulado = {
+                'arquivo': arquivo_pdf.name,
+                'nome_esperado': nome_esperado,
+                'posicao': i,
+                'posicao_planilha': i
+            }
+            arquivos_pulados.append(info_pulado)
+            
+            total_pulados += 1
+            continue
+            
+        elif resposta == 'q':
+            print(f"\n[SAIDA] Programa encerrado pelo usuario")
+            break
+            
         else:
-            # Para o processo
-            print(f"\n⏹️  Processo interrompido pelo usuário no arquivo: {arquivo_pdf.name}")
-            print(f"📊 Total de arquivos renomeados: {total_renomeados}")
+            print(f"\n[PARADO] Processo interrompido no arquivo: {arquivo_pdf.name}")
             break
     
-    # Exibe resultado final
-    if total_renomeados > 0:
-        print(f"\n🎉 Processo concluído!")
-        print(f"📊 Total de arquivos renomeados: {total_renomeados}")
-    else:
-        print(f"\n🔄 Nenhum arquivo foi renomeado.")
+    print(f"\n{'='*60}")
+    print("[FINAL] RELATORIO DE PROCESSAMENTO")
+    print(f"{'='*60}")
+    print(f"Arquivos renomeados: {total_renomeados}")
+    print(f"Arquivos pulados:    {total_pulados}")
+    print(f"Total processado:    {total_renomeados + total_pulados}")
     
-    input("\n⏳ Pressione Enter para finalizar...")
+    if arquivos_pulados:
+        print(f"\n{'-'*60}")
+        print("[DETALHES] ARQUIVOS PULADOS - Para adicionar na planilha:")
+        print(f"{'-'*60}")
+        
+        for pulado in arquivos_pulados:
+            print(f"Nome: {pulado['nome_esperado']}")
+            print(f"  |-> Arquivo original: {pulado['arquivo']}")
+            print(f"  |-> Posicao na planilha: linha {pulado['posicao_planilha']}")
+            print(f"  |-> (Inserir este nome na linha {pulado['posicao_planilha']} da planilha)")
+            print()
+        
+        print(f"{'-'*60}")
+    
+    if total_renomeados > 0:
+        print(f"[SUCESSO] Processo concluido com {total_renomeados} arquivos renomeados!")
+    else:
+        print(f"[INFO] Nenhum arquivo foi renomeado.")
+    
+    input("\n[FIM] Pressione Enter para finalizar...")
 
 
 if __name__ == "__main__":
-    """
-    Ponto de entrada do programa.
-    Trata interrupções e erros inesperados.
-    """
     try:
         main()
     except KeyboardInterrupt:
-        print(f"\n\n⏹️  Processo interrompido pelo usuário (Ctrl+C)")
+        print(f"\n\n[INTERROMPIDO] Processo cancelado pelo usuario (Ctrl+C)")
     except Exception as e:
-        print(f"\n\n❌ Erro inesperado: {str(e)}")
-        print("Por favor, verifique se todos os arquivos estão no local correto.")
+        print(f"\n\n[ERRO FATAL] Erro inesperado: {str(e)}")
+        print("Verifique se todos os arquivos estao no local correto.")
         input("Pressione Enter para finalizar...")

@@ -35,6 +35,7 @@ cd nome RenomeacaoPDFs
 
 ```bash
 pip install pandas openpyxl --user 
+pip install pandas openpyxl PyMuPDF --user #para OCR
 ```
 
 **OBS:** O parâmetro `--user` instala apenas para o usuário atual, dispensando privilégios de administrador.
@@ -132,6 +133,9 @@ Este PDF corresponde ao nome esperado? (s/n): s
 ### "pandas não encontrado"
 ```bash
 pip install pandas openpyxl --user --upgrade
+
+
+
 ```
 
 ### "python não é reconhecido"
