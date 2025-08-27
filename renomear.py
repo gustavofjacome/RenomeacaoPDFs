@@ -6,10 +6,11 @@ import re
 import time
 import sys
 import argparse
-import msvcrt
 from pathlib import Path
 from datetime import datetime
 from collections import Counter
+import ctypes
+import msvcrt
 
 # --- CONSTANTES ---
 NOME_PLANILHA_PADRAO = "nomes.xlsx"
@@ -27,16 +28,25 @@ def limpar_nome_arquivo(nome):
     return nome_limpo[:200] if len(nome_limpo) > 200 else nome_limpo
 
 def trazer_terminal_para_frente():
-    """Tenta trazer o terminal para frente (apenas Windows)."""
+    """Traz o terminal para frente usando API do Windows."""
     try:
-        powershell_cmd = (
-            "Add-Type -AssemblyName Microsoft.VisualBasic; "
-            "[Microsoft.VisualBasic.Interaction]::AppActivate((Get-Process -Id $PID).MainWindowHandle)"
-        )
-        subprocess.run(["powershell", "-WindowStyle", "Hidden", "-Command", powershell_cmd],
-                       timeout=2, check=False)
-    except Exception:
-        pass
+        # Pega o handle da janela do console atual
+        kernel32 = ctypes.windll.kernel32
+        user32 = ctypes.windll.user32
+        
+        # Pega o handle da janela do console
+        console_window = kernel32.GetConsoleWindow()
+        if console_window:
+            # Traz a janela para frente
+            user32.SetForegroundWindow(console_window)
+            # Foca na janela
+            user32.SetFocus(console_window)
+            # Garante que esteja visível
+            user32.ShowWindow(console_window, 9)  # SW_RESTORE
+            return True
+    except Exception as e:
+        print(f"Aviso: Não foi possível trazer terminal para frente: {e}")
+    return False
 
 def validar_planilha(nomes):
     """Verifica duplicatas na planilha e retorna avisos."""
@@ -57,8 +67,10 @@ def carregar_dados(planilha_path, pdfs_dir):
         if not nomes: return None, None, "Planilha vazia."
     except Exception as e:
         return None, None, f"Erro ao carregar planilha: {e}"
+    
     if not pdfs_dir.exists():
         return None, None, f"Pasta '{pdfs_dir}' não encontrada."
+    
     pdf_files = sorted(
         list(pdfs_dir.glob("*.pdf")),
         key=lambda f: int(re.findall(r'\d+', f.stem)[0]) if re.findall(r'\d+', f.stem) else 0
@@ -67,25 +79,34 @@ def carregar_dados(planilha_path, pdfs_dir):
     return nomes, pdf_files, "OK"
 
 def abrir_pdf(caminho_pdf):
-    """Abre PDF com visualizador padrão."""
+    """Abre PDF com visualizador padrão - SEM DELAY."""
     try:
         os.startfile(str(caminho_pdf))
         return True
-    except Exception:
+    except Exception as e:
+        print(f"Erro ao abrir PDF: {e}")
         return False
 
-def obter_resposta_rapida():
-    """Captura tecla única (sem Enter)."""
-    print("\n[s]im | [p]ular | [e]ditar | [r]eabrir | [n/q] sair")
-    return msvcrt.getch().decode('utf-8').lower()
+def obter_resposta():
+    """Captura tecla única sem Enter - MODO RÁPIDO."""
+    print("\n[S]im | [P]ular | [E]ditar | [R]eabrir | [N/Q]uit")
+    print("Escolha: ", end='', flush=True)
+    
+    while True:
+        try:
+            tecla = msvcrt.getch().decode('utf-8').lower()
+            if tecla in ['s', 'p', 'e', 'r', 'n', 'q']:
+                print(tecla.upper())  # Mostra a tecla pressionada
+                return tecla
+        except (KeyboardInterrupt, UnicodeDecodeError):
+            return 'q'
 
 def imprimir_barra_progresso(iteracao, total, prefixo='', sufixo='', comprimento=50):
     if total == 0: return
     percentual = f"{100 * (iteracao / float(total)):.1f}"
     preenchido = int(comprimento * iteracao // total)
     barra = '█' * preenchido + '-' * (comprimento - preenchido)
-    sys.stdout.write(f'\r{prefixo} |{barra}| {percentual}% {sufixo}')
-    sys.stdout.flush()
+    print(f'{prefixo} |{barra}| {percentual}% {sufixo}')
 
 def registrar_log(mensagem):
     agora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -105,100 +126,172 @@ def carregar_progresso(script_dir):
             return 0
     return 0
 
+def aguardar_so_se_erro(mensagem="ERRO - Enter para continuar..."):
+    """Só pausa em caso de erro."""
+    try:
+        input(mensagem)
+    except (KeyboardInterrupt, EOFError):
+        pass
+
 def main(args):
     script_dir = Path(__file__).parent
     planilha_path = Path(args.planilha)
     pdfs_dir = Path(args.pasta_pdfs)
 
-    os.system('cls' if os.name == 'nt' else 'clear')
-    print("[INÍCIO] Renomeador Manual Assistido v3.1")
-    print("="*60)
+    try:
+        os.system('cls' if os.name == 'nt' else 'clear')
+        print("="*70)
+        print("     RENOMEADOR MANUAL ASSISTIDO v3.2 - VERSÃO CORRIGIDA")
+        print("="*70)
+        print()
 
-    nomes, arquivos_pdf, msg = carregar_dados(planilha_path, pdfs_dir)
-    if not nomes:
-        print(f"[ERRO] {msg}"); input("Enter para sair..."); return
-
-    print(f"[OK] {len(nomes)} nomes e {len(arquivos_pdf)} PDFs carregados.")
-
-    avisos = validar_planilha(nomes)
-    if avisos:
-        print("\n".join(avisos))
-        if input("Continuar mesmo assim? (s/n): ").lower() != 's':
+        nomes, arquivos_pdf, msg = carregar_dados(planilha_path, pdfs_dir)
+        if not nomes:
+            print(f"[ERRO] {msg}")
+            aguardar_so_se_erro()
             return
 
-    inicio = 0
-    progresso_salvo = carregar_progresso(script_dir)
-    if 0 < progresso_salvo < min(len(arquivos_pdf), len(nomes)):
-        if input(f"Retomar do item {progresso_salvo+1}? (s/n): ").lower() == 's':
-            inicio = progresso_salvo
+        print(f"✅ {len(nomes)} nomes | {len(arquivos_pdf)} PDFs")
 
-    nomes_a_processar = nomes[inicio:]
-    arquivos_a_processar = arquivos_pdf[inicio:]
+        avisos = validar_planilha(nomes)
+        if avisos:
+            for aviso in avisos:
+                print(aviso)
+            resposta = input("Continuar? (s/n): ").lower()
+            if resposta != 's':
+                return
 
-    total_renomeados = total_pulados = total_editados = 0
-    arquivos_pulados, erros = [], []
+        # Verificar progresso salvo
+        inicio = 0
+        progresso_salvo = carregar_progresso(script_dir)
+        if 0 < progresso_salvo < min(len(arquivos_pdf), len(nomes)):
+            resposta = input(f"Retomar do item {progresso_salvo+1}? (s/n): ").lower()
+            if resposta == 's':
+                inicio = progresso_salvo
 
-    imprimir_barra_progresso(0, len(arquivos_a_processar), prefixo='Progresso:', sufixo='')
+        nomes_a_processar = nomes[inicio:]
+        arquivos_a_processar = arquivos_pdf[inicio:]
 
-    try:
+        total_renomeados = total_pulados = total_editados = 0
+        arquivos_pulados, erros = [], []
+
+        print("INICIANDO...")
+        
+        # Loop principal - MODO RÁPIDO
         for i, (arquivo_pdf, nome_esperado) in enumerate(zip(arquivos_a_processar, nomes_a_processar), start=inicio):
             nome_final = nome_esperado
             editado = False
+            
             while True:
-                os.system('cls' if os.name == 'nt' else 'clear')
-                print(f"Item {i+1}/{len(nomes)}")
-                print(f"Arquivo: {arquivo_pdf.name}\nNome sugerido: {nome_esperado}")
+                os.system('cls')
+                
+                print(f"ITEM {i+1}/{len(nomes)} | {arquivo_pdf.name}")
+                print(f"Nome: {nome_esperado}")
+                imprimir_barra_progresso(i - inicio + 1, len(arquivos_a_processar), 
+                                        'Progresso:', f'({i+1}/{len(nomes)})')
 
+                # Abrir PDF
                 if not abrir_pdf(arquivo_pdf):
-                    erros.append({'arquivo': arquivo_pdf.name, 'erro': 'Falha ao abrir'}); break
+                    print("❌ Falha ao abrir PDF!")
+                    erros.append({'arquivo': arquivo_pdf.name, 'erro': 'Falha ao abrir'})
+                    aguardar_so_se_erro()
+                    break
 
+                # Tentar trazer terminal para frente
                 trazer_terminal_para_frente()
-                resp = obter_resposta_rapida()
+
+                # Obter resposta RÁPIDA
+                resp = obter_resposta()
 
                 if resp == 'e':
-                    novo_nome = input("Novo nome (sem .pdf): ").strip()
+                    novo_nome = input("Novo nome: ").strip()
                     if novo_nome:
                         nome_final = limpar_nome_arquivo(novo_nome)
                         editado = True
-                        resp = 's'
-                    else: continue
-                if resp == 'r': continue
+                        resp = 's'  # Auto-confirma
+                    else:
+                        continue
+
+                elif resp == 'r':
+                    continue
+
                 elif resp == 's':
+                    # Renomear RÁPIDO
                     destino = pdfs_dir / f"{nome_final}.pdf"
                     contador = 1
                     while destino.exists():
                         destino = pdfs_dir / f"{nome_final}_{contador}.pdf"
                         contador += 1
+                    
                     try:
                         arquivo_pdf.rename(destino)
+                        print(f"✅ -> {destino.name}")
                         registrar_log(f"SUCESSO: '{arquivo_pdf.name}' -> '{destino.name}'")
                         total_renomeados += 1
-                        if editado: total_editados += 1
+                        if editado: 
+                            total_editados += 1
                         salvar_progresso(i+1, script_dir)
+                        
                     except Exception as e:
+                        print(f"❌ ERRO: {e}")
                         erros.append({'arquivo': arquivo_pdf.name, 'erro': str(e)})
                         registrar_log(f"ERRO: {e}")
+                        aguardar_so_se_erro()
+
                 elif resp == 'p':
+                    print("⏭️ PULADO")
                     arquivos_pulados.append({'arquivo': arquivo_pdf.name, 'sugestao': nome_esperado})
                     total_pulados += 1
-                elif resp in ['n', 'q']: raise KeyboardInterrupt
-                else: continue
+
+                elif resp in ['n', 'q']:
+                    raise KeyboardInterrupt
+
                 break
-            imprimir_barra_progresso(i - inicio + 1, len(arquivos_a_processar), prefixo='Progresso:', sufixo='')
+
     except KeyboardInterrupt:
-        print("\n[PAUSADO pelo usuário]")
+        print("\nPROCESSO INTERROMPIDO")
 
-    with open(script_dir / ARQUIVO_RELATORIO, 'w', encoding='utf-8') as f:
-        f.write(f"RELATÓRIO {datetime.now():%Y-%m-%d %H:%M:%S}\n")
-        f.write(f"Renomeados: {total_renomeados} (editados: {total_editados})\n")
-        f.write(f"Pulados: {total_pulados}\n")
-        f.write(f"Erros: {len(erros)}\n")
+    except Exception as e:
+        print(f"\nERRO: {e}")
+        registrar_log(f"ERRO CRÍTICO: {e}")
 
-    print("\n[FIM] Relatório salvo.")
+    finally:
+        # Relatório final RÁPIDO
+        print(f"\n📊 RESUMO: {total_renomeados} renomeados | {total_pulados} pulados | {len(erros)} erros")
+        
+        with open(script_dir / ARQUIVO_RELATORIO, 'w', encoding='utf-8') as f:
+            f.write(f"RELATÓRIO - {datetime.now():%Y-%m-%d %H:%M:%S}\n")
+            f.write(f"Renomeados: {total_renomeados} | Editados: {total_editados}\n")
+            f.write(f"Pulados: {total_pulados} | Erros: {len(erros)}\n")
+            
+            if arquivos_pulados:
+                f.write("\nPULADOS:\n")
+                for item in arquivos_pulados:
+                    f.write(f"- {item['arquivo']}\n")
+            
+            if erros:
+                f.write("\nERROS:\n")
+                for erro in erros:
+                    f.write(f"- {erro['arquivo']}: {erro['erro']}\n")
+
+        # Limpar progresso se terminou
+        if inicio + len(arquivos_a_processar) >= len(nomes):
+            progresso_file = script_dir / ARQUIVO_PROGRESSO
+            if progresso_file.exists():
+                progresso_file.unlink()
+
+        print("FIM - Relatório salvo")
+        input("Enter para sair...")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--planilha', default=NOME_PLANILHA_PADRAO)
-    parser.add_argument('--pasta_pdfs', default=PASTA_PDFS_PADRAO)
-    main(parser.parse_args())
-    input("Pressione Enter para sair...")
+    parser = argparse.ArgumentParser(description="Renomeador Manual Assistido de PDFs")
+    parser.add_argument('--planilha', default=NOME_PLANILHA_PADRAO,
+                       help=f"Caminho da planilha Excel (padrão: {NOME_PLANILHA_PADRAO})")
+    parser.add_argument('--pasta_pdfs', default=PASTA_PDFS_PADRAO,
+                       help=f"Pasta com os PDFs (padrão: {PASTA_PDFS_PADRAO})")
+    
+    try:
+        main(parser.parse_args())
+    except Exception as e:
+        print(f"Erro crítico: {e}")
+        input("Pressione ENTER para sair...")
