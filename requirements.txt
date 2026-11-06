@@ -1,0 +1,4 @@
+# O script funciona mesmo sem dependências externas para ler .xlsx e .csv!
+# Porém, recomendamos instalar o pypdf (--user, sem precisar de admin) para dividir PDFs no Windows:
+pypdf>=4.0.0
+openpyxl>=3.1.0

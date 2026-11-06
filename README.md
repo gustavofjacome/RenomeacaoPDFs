@@ -1,167 +1,98 @@
-# 📄 Renomeador Automático de PDFs
+# 📄 Renomeador Semiautomático de PDFs (CLI v4.0)
 
-## 📋 Descrição
+Sistema em linha de comando (CLI) para renomear PDFs digitalizados em massa com conferência rápida por 1 tecla, formatação automática de nomes (`Primeiro_Segundo_Matricula`), divisão de PDFs com 2 pessoas no mesmo arquivo e retomada inteligente.
 
-Sistema para automatizar a renomeação de arquivos PDF digitalizados usando uma planilha Excel como referência.
+---
 
-O sistema abre cada PDF para visualização, permite conferir se corresponde ao nome esperado, e renomeia automaticamente após confirmação.
+## 🏢 Como usar no PC do Trabalho (Sem dor de cabeça e sem Admin)
 
-
-## 🗂️ Estrutura de Arquivos
-
+### 1. Como pegar esta versão no PC do trabalho
+Se você já tem a pasta do repositório lá no trabalho, abra o terminal na pasta e rode:
+```bash
+git fetch origin
+git checkout v4-cli
+git pull origin v4-cli
 ```
-projeto/
-├── renomear.py          # Script principal
-├── nomes.xlsx           # Planilha com os nomes (primeira coluna)
-├── pdfs/               # Pasta com os PDFs para renomear
-│   ├── .001.pdf
-│   ├── .002.pdf
-│   ├── .003.pdf
-│   └── ...
-└── README.md           # Este arquivo
-```
+*(Ou, se preferir nem usar Git no trabalho, basta abrir a branch `v4-cli` no GitHub, clicar no botão verde **Code -> Download ZIP** e extrair a pasta!)*
 
-## 🚀 Instalação
+### 2. Como abrir o programa (Zero esforço)
+- **No Windows:** Basta dar **2 cliques no arquivo `iniciar.bat`**! (Ou rodar `python renomear.py` no terminal).
+- **Não precisa instalar nada antes:** O script já lê `.xlsx` e `.csv` nativamente com o próprio Python puro (sem precisar instalar `pandas` nem `openpyxl`).
+- Se você precisar dividir um PDF de 2 páginas (`[D]`) pela primeira vez no Windows, o próprio programa pergunta na tela se você quer que ele instale o `pypdf` automaticamente no modo usuário (sem precisar de senha de administrador).
 
-### 1. Clone o Repositório
+---
+
+## ✨ O que mudou na v4.0?
+
+1. **Adeus fórmula no Excel**: Você não precisa mais criar fórmulas para juntar `Primeiro_Segundo_Matricula` nem remover `de`, `da`, `do`, `dos`, `das`, `e` na mão. Basta colocar as **2 colunas (`Nome Completo` e `Matrícula`)** direto em `nomes.xlsx` (ou continuar usando 1 coluna já formatada — ambos funcionam!).
+2. **Filas Independentes (Nunca mais desalinha)**:
+   - **Pessoa fora da planilha (`[E]` Editar)**: Você digita o nome + matrícula (o script formata sozinho!) e escolhe manter a fila atual para o próximo PDF.
+   - **Pessoa da planilha veio fora de ordem (`[B]` Buscar)**: Pesquise parte do nome ou matrícula direto no terminal, selecione a pessoa e renomeie sem bagunçar a fila.
+   - **Pessoa da planilha faltou / sem PDF (`[N]` Pular Nome)**: Pula apenas o nome da planilha e continua no mesmo PDF aberto.
+3. **2 Pessoas no mesmo PDF (`[D]` Dividir PDF)**:
+   - Divide o PDF (ex: Página 1 para a 1ª pessoa e Página 2 para a 2ª pessoa) **direto pelo terminal**, já renomeia a Parte 1 e coloca a Parte 2 como o próximo arquivo da fila!
+4. **Retomada Automática (Sem apagar linhas da planilha)**:
+   - Se você fechar o programa no meio e abrir de novo depois, ele reconhece sozinho quais arquivos já foram renomeados na pasta `pdfs/` e pula automaticamente os nomes correspondentes da planilha.
+5. **Desfazer Imediato (`[Z]`)**:
+   - Apertou `[S]` por engano? Aperte `[Z]` na mesma hora para desfazer a última ação e voltar ao arquivo anterior.
+
+---
+
+## 📊 Preparação da Planilha (`nomes.xlsx` ou `.csv`)
+
+Você pode usar `nomes.xlsx` de **duas formas** (o sistema detecta automaticamente):
+
+### Opção A (Recomendada): 2 Colunas (Nome Completo + Matrícula)
+Basta colar o nome completo na Coluna A e a matrícula na Coluna B:
+
+| Nome Completo | Matrícula |
+| :--- | :--- |
+| Gustavo de Oliveira Jácome | 20201011100005 |
+| MARIA DAS DORES DA SILVA | 20251213400008 |
+| João Pedro dos Santos | 20251213400009 |
+
+O script removerá automaticamente `de`, `da`, `do`, `dos`, `das`, `e` e gerará:
+- `Gustavo_Oliveira_20201011100005.pdf`
+- `Maria_Dores_20251213400008.pdf`
+- `João_Pedro_20251213400009.pdf`
+
+### Opção B: 1 Coluna já formatada (Modo clássico)
+| NOME DO PDF |
+| :--- |
+| Gustavo_Jacome_20201011100005 |
+| João_Silva_20251213400007 |
+
+---
+
+## 🎯 Atalhos do Terminal (1 Tecla, sem precisar de Enter)
+
+Coloque os PDFs digitalizados na pasta `pdfs/` (ex: `.001.pdf`, `.002.pdf`, etc.) e abra o `iniciar.bat` (ou `python renomear.py`):
+
+| Tecla | Função | Quando usar? |
+| :---: | :--- | :--- |
+| **`S`** | **Sim (Confirmar)** | O PDF aberto corresponde ao nome exibido na tela. |
+| **`E`** | **Editar / Pessoa Extra** | O PDF é de alguém **que não está na planilha** (ou você quer digitar outro nome). Permite manter o nome atual da fila para o próximo PDF! |
+| **`B`** | **Buscar na Planilha** | O PDF é de alguém que **está na planilha, mas fora de ordem**. |
+| **`D`** | **Dividir PDF (2+ pessoas)** | Duas ou mais pessoas foram digitalizadas juntas no mesmo PDF. Separa as páginas na hora! |
+| **`N`** | **Pular Nome da Fila** | A pessoa sugerida na planilha não tem PDF (faltou), e o PDF aberto já é da próxima pessoa. |
+| **`P`** | **Pular Arquivo PDF** | Deixar este arquivo PDF para verificar depois. |
+| **`Z`** | **Desfazer Último** | Reverte imediatamente a última ação/renomeação feita na sessão. |
+| **`R`** | **Reabrir PDF** | Abre novamente o PDF atual no visualizador padrão. |
+| **`Q`** | **Sair** | Salva o relatório e encerra (ao abrir de novo, continua de onde parou!). |
+
+---
+
+## ↩️ Reverter em Lote (`desfazer.bat` ou `desfazer.py`)
+
+Caso queira reverter várias renomeações pelo histórico do arquivo `renomeacao.log`, dê 2 cliques em `desfazer.bat` ou rode:
 
 ```bash
-git clone https://github.com/gustavofjacome/RenomeacaoPDFs
-cd nome RenomeacaoPDFs
+# Simular o que seria revertido (sem alterar arquivos)
+python desfazer.py --dry-run
 
+# Reverter apenas as últimas 5 renomeações
+python desfazer.py --ultimos 5
+
+# Reverter todas as renomeações ativas do log
+python desfazer.py
 ```
-
-### 2. Instale as Dependências
-
-```bash
-pip install pandas openpyxl --user 
-pip install pandas openpyxl PyMuPDF --user #para OCR
-```
-
-**OBS:** O parâmetro `--user` instala apenas para o usuário atual, dispensando privilégios de administrador.
-
-### 3. Verificar Python
-
-Certifique-se de ter Python instalado:
-
-```bash
-python --version
-```
-
-## 📊 Preparação dos Dados
-
-### Planilha Excel (nomes.xlsx)
-
-1. Crie uma planilha Excel chamada `nomes.xlsx`
-2. Na **primeira coluna (A)**, coloque os nomes desejados, um por linha:
-
-```
-Coluna A
---------
-João_Silva_20251213400007
-Taubaté_da_Silva_20251213400008
-Gus_Carvalho_20251213400009
-William_Silva_20251213400010
-...
-```
-
-3. Salve o arquivo na pasta principal do projeto
-
-### Arquivos PDF
-
-1. Coloque os PDFs na pasta `pdfs/`
-2. Os arquivos devem seguir padrão numérico: `.001.pdf`, `.002.pdf`, `.003.pdf`, etc.
-3. A ordem dos PDFs deve corresponder à ordem dos nomes na planilha
-
-## 🎯 Como Usar
-
-### 1. Execute o Script
-
-```bash
-python renomear.py  #certifique-se de estar na pasta do RenomeacaoPDFs para usar este comando
-```
-
-### 2. Siga os Comandos do Script
-
-O programa irá:
-
-1. **Verificar** se todos os arquivos necessários existem
-2. **Contar** quantos nomes e PDFs foram encontrados
-3. **Para cada PDF**:
-   - Abrir o arquivo no visualizador padrão
-   - Mostrar qual nome é esperado
-   - Aguardar sua confirmação:
-     - Digite **'s'** se o PDF corresponde ao nome → arquivo será renomeado
-     - Digite **'n'** se não corresponde → processo será interrompido
-
-### 3. Exemplo de Uso
-
-```
-📄 Processando 1/25
-🔍 Abrindo PDF: .001.pdf
-
-⏳ Pressione Enter quando o PDF estiver aberto e você puder visualizá-lo...
-
-============================================================
-Arquivo atual: .001.pdf
-Nome esperado: Taubaté_da_Silva_20251213400008
-============================================================
-Este PDF corresponde ao nome esperado? (s/n): s
-
-✅ Arquivo renomeado para: Taubaté_da_Silva_20251213400008.pdf
-```
-
-## ⚙️ Características Técnicas
-
-### Tratamento de Nomes
-- Remove caracteres inválidos para Windows: `/ \ : * ? " < > |`
-- Limita tamanho dos nomes para evitar problemas do sistema
-- Adiciona numeração automática em caso de nomes duplicados
-
-### Compatibilidade
-- **Windows**: Totalmente compatível
-- **Python**: Versão 3.6+
-
-### Dependências
-- `pandas`: Leitura de planilhas Excel
-- `openpyxl`: Engine para arquivos .xlsx
-- `pathlib`: Manipulação de caminhos (incluída no Python)
-- `subprocess`: Execução de comandos do sistema (incluída no Python)
-
-## 🛠️ Solução de Problemas
-
-### "pandas não encontrado"
-```bash
-pip install pandas openpyxl --user --upgrade
-
-
-
-```
-
-### "python não é reconhecido"
-1. Instale o Python do site oficial: https://python.org
-2. Marque "Add to PATH" durante a instalação
-3. Reinicie o terminal
-
-### PDF não abre automaticamente
-- O script tentará abrir no visualizador padrão
-- Se falhar, abra manualmente o arquivo mostrado na tela
-- No Windows, o padrão geralmente é o Microsoft Edge
-
-### Planilha não é reconhecida
-- Verifique se o arquivo se chama exatamente `nomes.xlsx`
-- Certifique-se de que está na mesma pasta do script
-- Confirme que os nomes estão na primeira coluna (A)
-
-### Arquivos não são encontrados
-- Verifique se a pasta `pdfs/` existe
-- Confirme que os PDFs têm extensão `.pdf`
-- Certifique-se de que há arquivos na pasta
-
-## 🔒 Segurança
-
-- **Backup recomendado**: Sempre faça backup dos PDFs originais antes de executar
-- **Processo reversível**: Mantenha uma cópia dos arquivos originais
-- **Interrupção segura**: Use Ctrl+C ou responda 'n' para parar a qualquer momento
-
-**⭐ Se este projeto foi útil, considere dar uma estrela no repositório!**
