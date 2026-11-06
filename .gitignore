@@ -3,4 +3,5 @@ __pycache__/
 .progresso.txt
 renomeacao.log
 relatorio_final.txt
+nomes_colados.csv
 pdfs/.backup_divididos/

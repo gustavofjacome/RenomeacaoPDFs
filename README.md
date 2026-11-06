@@ -1,98 +1,74 @@
-# 📄 Renomeador Semiautomático de PDFs (CLI v4.0)
+# 🌐 Renomeador Semiautomático de PDFs — v5.0 (Interface Gráfica Local + CLI)
 
-Sistema em linha de comando (CLI) para renomear PDFs digitalizados em massa com conferência rápida por 1 tecla, formatação automática de nomes (`Primeiro_Segundo_Matricula`), divisão de PDFs com 2 pessoas no mesmo arquivo e retomada inteligente.
+Sistema completo para renomear PDFs digitalizados em massa de forma **ultrarrápida**, rodando **100% em `localhost` (`127.0.0.1`)** para máxima privacidade de dados sensíveis e **sem exigir permissão de administrador**.
 
 ---
 
-## 🏢 Como usar no PC do Trabalho (Sem dor de cabeça e sem Admin)
+## 🚀 Como Iniciar a Interface Gráfica (Web GUI v5.0)
 
-### 1. Como pegar esta versão no PC do trabalho
-Se você já tem a pasta do repositório lá no trabalho, abra o terminal na pasta e rode:
+### No Windows (PC do Trabalho)
+Basta dar **2 cliques no arquivo `iniciar_gui.bat`**!
+
+### No Terminal (Windows ou Linux)
 ```bash
-git fetch origin
-git checkout v4-cli
-git pull origin v4-cli
+python gui.py
 ```
-*(Ou, se preferir nem usar Git no trabalho, basta abrir a branch `v4-cli` no GitHub, clicar no botão verde **Code -> Download ZIP** e extrair a pasta!)*
 
-### 2. Como abrir o programa (Zero esforço)
-- **No Windows:** Basta dar **2 cliques no arquivo `iniciar.bat`**! (Ou rodar `python renomear.py` no terminal).
-- **Não precisa instalar nada antes:** O script já lê `.xlsx` e `.csv` nativamente com o próprio Python puro (sem precisar instalar `pandas` nem `openpyxl`).
-- Se você precisar dividir um PDF de 2 páginas (`[D]`) pela primeira vez no Windows, o próprio programa pergunta na tela se você quer que ele instale o `pypdf` automaticamente no modo usuário (sem precisar de senha de administrador).
+O sistema iniciará um servidor local privado (`http://127.0.0.1:8765`) e **abrirá automaticamente o navegador** com a tela dividida:
+- **Lado Esquerdo (Visualizador de PDF Embutido):** O PDF abre **dentro da própria página** (você não precisa mais dividir janela de terminal com janela de navegador, nem fechar abas!). Além disso, o sistema já faz *pré-carregamento* do próximo PDF em segundo plano para a troca ser instantânea.
+- **Lado Direito (Painel de Controle e Fila):** Mostra em destaque o **Nome Completo**, a **Matrícula**, **como o arquivo vai ficar** (`Primeiro_Segundo_Matricula.pdf`), todos os botões de ação e a fila interativa da planilha.
 
 ---
 
-## ✨ O que mudou na v4.0?
+## 🔒 Segurança e Privacidade (Dados Sensíveis)
 
-1. **Adeus fórmula no Excel**: Você não precisa mais criar fórmulas para juntar `Primeiro_Segundo_Matricula` nem remover `de`, `da`, `do`, `dos`, `das`, `e` na mão. Basta colocar as **2 colunas (`Nome Completo` e `Matrícula`)** direto em `nomes.xlsx` (ou continuar usando 1 coluna já formatada — ambos funcionam!).
-2. **Filas Independentes (Nunca mais desalinha)**:
-   - **Pessoa fora da planilha (`[E]` Editar)**: Você digita o nome + matrícula (o script formata sozinho!) e escolhe manter a fila atual para o próximo PDF.
-   - **Pessoa da planilha veio fora de ordem (`[B]` Buscar)**: Pesquise parte do nome ou matrícula direto no terminal, selecione a pessoa e renomeie sem bagunçar a fila.
-   - **Pessoa da planilha faltou / sem PDF (`[N]` Pular Nome)**: Pula apenas o nome da planilha e continua no mesmo PDF aberto.
-3. **2 Pessoas no mesmo PDF (`[D]` Dividir PDF)**:
-   - Divide o PDF (ex: Página 1 para a 1ª pessoa e Página 2 para a 2ª pessoa) **direto pelo terminal**, já renomeia a Parte 1 e coloca a Parte 2 como o próximo arquivo da fila!
-4. **Retomada Automática (Sem apagar linhas da planilha)**:
-   - Se você fechar o programa no meio e abrir de novo depois, ele reconhece sozinho quais arquivos já foram renomeados na pasta `pdfs/` e pula automaticamente os nomes correspondentes da planilha.
-5. **Desfazer Imediato (`[Z]`)**:
-   - Apertou `[S]` por engano? Aperte `[Z]` na mesma hora para desfazer a última ação e voltar ao arquivo anterior.
+- O servidor roda estritamente no endereço de loopback **`127.0.0.1`** (acessível apenas pela própria máquina).
+- **Zero internet / Zero nuvem:** Nenhum arquivo PDF, nome ou matrícula é enviado para a internet. Funciona inclusive com o cabo de rede desconectado.
+- **Zero dependências externas obrigatórias:** Usa o servidor nativo do Python (`http.server`) e leitor nativo de `.xlsx`/`.csv`, não precisando instalar Flask, Node.js ou pacotes pesados no computador do trabalho.
 
 ---
 
-## 📊 Preparação da Planilha (`nomes.xlsx` ou `.csv`)
+## ⚡ Superpoderes da Versão GUI (`v5-gui`)
 
-Você pode usar `nomes.xlsx` de **duas formas** (o sistema detecta automaticamente):
-
-### Opção A (Recomendada): 2 Colunas (Nome Completo + Matrícula)
-Basta colar o nome completo na Coluna A e a matrícula na Coluna B:
-
-| Nome Completo | Matrícula |
-| :--- | :--- |
-| Gustavo de Oliveira Jácome | 20201011100005 |
-| MARIA DAS DORES DA SILVA | 20251213400008 |
-| João Pedro dos Santos | 20251213400009 |
-
-O script removerá automaticamente `de`, `da`, `do`, `dos`, `das`, `e` e gerará:
-- `Gustavo_Oliveira_20201011100005.pdf`
-- `Maria_Dores_20251213400008.pdf`
-- `João_Pedro_20251213400009.pdf`
-
-### Opção B: 1 Coluna já formatada (Modo clássico)
-| NOME DO PDF |
-| :--- |
-| Gustavo_Jacome_20201011100005 |
-| João_Silva_20251213400007 |
+1. **PDF Embutido na Página + Alerta Automático de 2+ Páginas:**
+   - Quando um PDF possui **2 ou mais páginas**, um alerta piscante amarelo aparece automaticamente no topo do PDF (`⚠️ 2 páginas — 2+ pessoas? Clique ou [D] p/ dividir`), evitando que duas pessoas no mesmo arquivo passem despercebidas.
+2. **Atalhos de 1 Tecla no Navegador (Modo Speed-Run):**
+   - Você pode operar tudo pelo mouse **ou** apenas apertando **1 tecla** (sem precisar clicar em nada):
+     - **`S`** ou **`Enter`**: **Confirmar e Renomear** (passa para o próximo PDF na hora!).
+     - **`E`**: Abre a gaveta de **Editar / Pessoa Fora da Planilha** (você digita `Nome Completo Matrícula` e vê a prévia formatada em tempo real!).
+     - **`D`**: Abre a gaveta de **Dividir PDF (2+ pessoas)** — com 1 clique você separa a Página 1 (já renomeando para o aluno atual) e joga a Página 2 para a tela!
+     - **`B`** ou **`/`**: Foca na **Busca Instantânea** da planilha para achar qualquer aluno fora de ordem.
+     - **`N`**: **Pular Nome da Fila** (quando o aluno da planilha faltou / não tem PDF).
+     - **`P`**: **Pular Arquivo PDF** (deixa o PDF atual para depois, mantendo o nome da fila).
+     - **`Z`** (ou `Ctrl+Z`): **Desfazer Última Ação** na mesma hora!
+3. **Colar Direto do Excel (`Ctrl+C` -> `Ctrl+V`):**
+   - Na aba **"📋 Colar do Excel"**, você pode simplesmente copiar as 2 colunas (`Nome Completo` e `Matrícula`) lá no Excel e colar direto na caixa de texto do site! O sistema já remove `de`, `da`, `do`, `dos`, `das`, `e` e monta a fila na hora, sem nem precisar salvar planilha se não quiser.
+4. **Fila Interativa com Clique Rápido:**
+   - Na aba **"🔎 Fila / Busca"**, você vê todos os nomes da planilha (quem já foi concluído, quem é o atual e quem está pendente).
+   - Se um PDF veio fora de ordem, basta clicar em **`🎯 Usar neste PDF`** ao lado do nome da pessoa na lista!
+5. **Retomada Inteligente:**
+   - Se fechar o navegador ou parar no meio, basta abrir de novo depois: ele detecta sozinho na pasta `pdfs/` quais arquivos e nomes já foram renomeados e continua exatamente dos que faltam.
 
 ---
 
-## 🎯 Atalhos do Terminal (1 Tecla, sem precisar de Enter)
+## 📊 Como Preparar os Dados
 
-Coloque os PDFs digitalizados na pasta `pdfs/` (ex: `.001.pdf`, `.002.pdf`, etc.) e abra o `iniciar.bat` (ou `python renomear.py`):
-
-| Tecla | Função | Quando usar? |
-| :---: | :--- | :--- |
-| **`S`** | **Sim (Confirmar)** | O PDF aberto corresponde ao nome exibido na tela. |
-| **`E`** | **Editar / Pessoa Extra** | O PDF é de alguém **que não está na planilha** (ou você quer digitar outro nome). Permite manter o nome atual da fila para o próximo PDF! |
-| **`B`** | **Buscar na Planilha** | O PDF é de alguém que **está na planilha, mas fora de ordem**. |
-| **`D`** | **Dividir PDF (2+ pessoas)** | Duas ou mais pessoas foram digitalizadas juntas no mesmo PDF. Separa as páginas na hora! |
-| **`N`** | **Pular Nome da Fila** | A pessoa sugerida na planilha não tem PDF (faltou), e o PDF aberto já é da próxima pessoa. |
-| **`P`** | **Pular Arquivo PDF** | Deixar este arquivo PDF para verificar depois. |
-| **`Z`** | **Desfazer Último** | Reverte imediatamente a última ação/renomeação feita na sessão. |
-| **`R`** | **Reabrir PDF** | Abre novamente o PDF atual no visualizador padrão. |
-| **`Q`** | **Sair** | Salva o relatório e encerra (ao abrir de novo, continua de onde parou!). |
+1. **Planilha (`nomes.xlsx` ou colar na tela):**
+   - **Opção recomendada (2 colunas):** Coluna A com `Nome Completo` e Coluna B com `Matrícula`. O sistema formata automaticamente para `Primeiro_Segundo_Matricula.pdf` (ignorando `de`, `da`, `do`, `dos`, `das`, `e`).
+   - **Opção clássica (1 coluna):** Coluna A já no formato `Gustavo_Jacome_20201011100005`.
+2. **Pasta `pdfs/`:**
+   - Coloque os PDFs digitalizados na pasta `pdfs/` (ex: `.001.pdf`, `.002.pdf`, etc.).
+   - Se adicionar novos PDFs enquanto o site já estiver aberto, basta clicar no botão **"🔄 Atualizar Pasta PDFs"** no topo da página!
 
 ---
 
-## ↩️ Reverter em Lote (`desfazer.bat` ou `desfazer.py`)
+## 💻 Modo Terminal (CLI v4.0) também disponível
 
-Caso queira reverter várias renomeações pelo histórico do arquivo `renomeacao.log`, dê 2 cliques em `desfazer.bat` ou rode:
-
+Se em algum momento quiser rodar apenas no modo texto no terminal, ele continua disponível na mesma pasta:
 ```bash
-# Simular o que seria revertido (sem alterar arquivos)
-python desfazer.py --dry-run
-
-# Reverter apenas as últimas 5 renomeações
-python desfazer.py --ultimos 5
-
-# Reverter todas as renomeações ativas do log
+python renomear.py
+```
+E para reverter várias renomeações em lote pelo histórico:
+```bash
 python desfazer.py
 ```
