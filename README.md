@@ -1,74 +1,69 @@
-# 🌐 Renomeador Semiautomático de PDFs — v5.0 (Interface Gráfica Local + CLI)
+# 🌐 Renomeador Semiautomático de PDFs — v6.0 (Web GUI Local + PyMuPDF + OCR Leve)
 
-Sistema completo para renomear PDFs digitalizados em massa de forma **ultrarrápida**, rodando **100% em `localhost` (`127.0.0.1`)** para máxima privacidade de dados sensíveis e **sem exigir permissão de administrador**.
+Sistema completo para renomear, dividir, juntar, girar, recortar e auditar PDFs digitalizados em massa de forma **ultrarrápida**, rodando **100% em `localhost` (`127.0.0.1`)** para máxima privacidade de dados sensíveis e **sem precisar de chave de API ou internet**.
 
 ---
 
-## 🚀 Como Iniciar a Interface Gráfica (Web GUI v5.0)
+## 🚀 Como Iniciar a Interface Gráfica (Web GUI v6.0)
 
 ### No Windows (PC do Trabalho)
 Basta dar **2 cliques no arquivo `iniciar_gui.bat`**!
 
 ### No Terminal (Windows ou Linux)
 ```bash
+source .venv/bin/activate
 python gui.py
 ```
 
-O sistema iniciará um servidor local privado (`http://127.0.0.1:8765`) e **abrirá automaticamente o navegador** com a tela dividida:
-- **Lado Esquerdo (Visualizador de PDF Embutido):** O PDF abre **dentro da própria página** (você não precisa mais dividir janela de terminal com janela de navegador, nem fechar abas!). Além disso, o sistema já faz *pré-carregamento* do próximo PDF em segundo plano para a troca ser instantânea.
-- **Lado Direito (Painel de Controle e Fila):** Mostra em destaque o **Nome Completo**, a **Matrícula**, **como o arquivo vai ficar** (`Primeiro_Segundo_Matricula.pdf`), todos os botões de ação e a fila interativa da planilha.
+---
+
+## 🎯 Regra Automática das 3 Prioridades de Renomeação
+
+O sistema lê planilhas com 1, 2 ou 3 colunas (`Nome Completo`, `Matrícula`, `CPF`) e aplica automaticamente a hierarquia:
+
+1. **Prioridade 1 (Possui Matrícula válida):**
+   Usa `Primeiro_Segundo_Matricula.pdf` (ignorando preposições `de`, `da`, `do`, `dos`, `das`, `e`).
+   *Exemplo:* `Gustavo_Ferreira_20201011100005.pdf`
+2. **Prioridade 2 (Matrícula vazia / `"Não consta"`, mas possui CPF):**
+   Usa `Primeiro_Segundo_CPF.pdf`.
+   *Exemplo:* `Gustavo_Ferreira_12345678900.pdf`
+3. **Prioridade 3 (Sem Matrícula e sem CPF):**
+   Usa o **nome completo separado por `_` em letras minúsculas** (sem acentos).
+   *Exemplo:* `gustavo_ferreira_jacome_de_lira.pdf`
 
 ---
 
-## 🔒 Segurança e Privacidade (Dados Sensíveis)
+## ⚡ Superpoderes da Versão v6.0
 
-- O servidor roda estritamente no endereço de loopback **`127.0.0.1`** (acessível apenas pela própria máquina).
-- **Zero internet / Zero nuvem:** Nenhum arquivo PDF, nome ou matrícula é enviado para a internet. Funciona inclusive com o cabo de rede desconectado.
-- **Zero dependências externas obrigatórias:** Usa o servidor nativo do Python (`http.server`) e leitor nativo de `.xlsx`/`.csv`, não precisando instalar Flask, Node.js ou pacotes pesados no computador do trabalho.
-
----
-
-## ⚡ Superpoderes da Versão GUI (`v5-gui`)
-
-1. **PDF Embutido na Página + Alerta Automático de 2+ Páginas:**
-   - Quando um PDF possui **2 ou mais páginas**, um alerta piscante amarelo aparece automaticamente no topo do PDF (`⚠️ 2 páginas — 2+ pessoas? Clique ou [D] p/ dividir`), evitando que duas pessoas no mesmo arquivo passem despercebidas.
-2. **Atalhos de 1 Tecla no Navegador (Modo Speed-Run):**
-   - Você pode operar tudo pelo mouse **ou** apenas apertando **1 tecla** (sem precisar clicar em nada):
-     - **`S`** ou **`Enter`**: **Confirmar e Renomear** (passa para o próximo PDF na hora!).
-     - **`E`**: Abre a gaveta de **Editar / Pessoa Fora da Planilha** (você digita `Nome Completo Matrícula` e vê a prévia formatada em tempo real!).
-     - **`D`**: Abre a gaveta de **Dividir PDF (2+ pessoas)** — com 1 clique você separa a Página 1 (já renomeando para o aluno atual) e joga a Página 2 para a tela!
-     - **`B`** ou **`/`**: Foca na **Busca Instantânea** da planilha para achar qualquer aluno fora de ordem.
-     - **`N`**: **Pular Nome da Fila** (quando o aluno da planilha faltou / não tem PDF).
-     - **`P`**: **Pular Arquivo PDF** (deixa o PDF atual para depois, mantendo o nome da fila).
-     - **`Z`** (ou `Ctrl+Z`): **Desfazer Última Ação** na mesma hora!
-3. **Colar Direto do Excel (`Ctrl+C` -> `Ctrl+V`):**
-   - Na aba **"📋 Colar do Excel"**, você pode simplesmente copiar as 2 colunas (`Nome Completo` e `Matrícula`) lá no Excel e colar direto na caixa de texto do site! O sistema já remove `de`, `da`, `do`, `dos`, `das`, `e` e monta a fila na hora, sem nem precisar salvar planilha se não quiser.
-4. **Fila Interativa com Clique Rápido:**
-   - Na aba **"🔎 Fila / Busca"**, você vê todos os nomes da planilha (quem já foi concluído, quem é o atual e quem está pendente).
-   - Se um PDF veio fora de ordem, basta clicar em **`🎯 Usar neste PDF`** ao lado do nome da pessoa na lista!
-5. **Retomada Inteligente:**
-   - Se fechar o navegador ou parar no meio, basta abrir de novo depois: ele detecta sozinho na pasta `pdfs/` quais arquivos e nomes já foram renomeados e continua exatamente dos que faltam.
-
----
-
-## 📊 Como Preparar os Dados
-
-1. **Planilha (`nomes.xlsx` ou colar na tela):**
-   - **Opção recomendada (2 colunas):** Coluna A com `Nome Completo` e Coluna B com `Matrícula`. O sistema formata automaticamente para `Primeiro_Segundo_Matricula.pdf` (ignorando `de`, `da`, `do`, `dos`, `das`, `e`).
-   - **Opção clássica (1 coluna):** Coluna A já no formato `Gustavo_Jacome_20201011100005`.
-2. **Pasta `pdfs/`:**
-   - Coloque os PDFs digitalizados na pasta `pdfs/` (ex: `.001.pdf`, `.002.pdf`, etc.).
-   - Se adicionar novos PDFs enquanto o site já estiver aberto, basta clicar no botão **"🔄 Atualizar Pasta PDFs"** no topo da página!
-
----
-
-## 💻 Modo Terminal (CLI v4.0) também disponível
-
-Se em algum momento quiser rodar apenas no modo texto no terminal, ele continua disponível na mesma pasta:
-```bash
-python renomear.py
-```
-E para reverter várias renomeações em lote pelo histórico:
-```bash
-python desfazer.py
-```
+1. **Juntar PDFs (`[J]`) e Anexar ao Aluno Anterior (`[A]`):**
+   - **`[J]` Juntar PDFs:** Une o PDF atual com o próximo PDF da fila (ou $N$ PDFs seguidos) quando um documento de um mesmo aluno foi escaneado separado.
+   - **`[A]` + Aluno Anterior:** Acabou de renomear um aluno e percebeu que a folha seguinte ainda era dele? Aperte **`A`** e ela é colada diretamente no final do PDF que você acabou de salvar!
+   - **Alerta de Aluno Repetido:** Se o aluno atual já tiver um PDF salvo na pasta, aparece um botão **`📎 Juntar a ele`** para unir as páginas em vez de duplicar.
+2. **Girar Páginas (`[R]`) e Auto-Orientação (`🧭 Auto-Orientar`):**
+   - Gire páginas em `90°`, `-90°` ou `180°` com 1 clique/tecla, ou clique em **Auto-Orientar** para o sistema colocar páginas "deitadas" na orientação de leitura automaticamente.
+3. **Editor Visual de Página (`[C]`) + Remoção de "Bordinhas Pretas" de Scanner:**
+   - **🪄 Tirar Bordas Pretas:** Analisa as 4 margens da folha escaneada e remove aquelas faixas pretas de canto de scanner com 1 clique.
+   - **✂️ Recorte Manual com o Mouse (`[C]`):** Desenhe um retângulo com o mouse direto sobre a página para recortar exatamente a área desejada (na página atual ou em todas).
+   - **⚪ Alerta de Página em Branco + Exclusão/Inversão:** Detecta páginas em branco sozinho (verso vazio de scanner) e permite excluir qualquer página ou **inverter a ordem das páginas** (`🔄 Inverter Ordem`).
+4. **Verificação Automática, Diagnóstico de Causa de Erro e Treinamento Contínuo da IA (`memoria_ia.json`):**
+   - Extrai o texto do cabeçalho da 1ª página (e também inspeciona a 2ª página quando há múltiplas páginas) para conferir **Matrícula, CPF e Nome** com toda a planilha.
+   - **Diagnóstico Inteligente ("O que pode ter acontecido?"):** Quando há divergência ou dúvida (amarelo/vermelho), a IA explica a provável causa do problema e oferece botões de **1 clique** para resolver na hora:
+     - *Desalinhamento de fila (aluno faltante)* -> botão para pular o faltante e renomear para o aluno encontrado.
+     - *Dois alunos escaneados juntos no mesmo PDF (Pág. 1 ≠ Pág. 2)* -> botão para dividir na Página 1.
+     - *Continuação / verso solto do aluno anterior* -> botão para anexar ao PDF anterior (`[A]`).
+     - *Documento de familiar no dossiê (Pai/Mãe)* -> ignora linhas de `Filiação:`/`Pai:`/`Mãe:` e alerta se apenas o sobrenome bater.
+     - *TCC / Trabalho em Grupo* -> detecta 2+ alunos da planilha na mesma capa e oferece duplicação automática para todos os integrantes.
+     - *Página deitada/invertida* -> sugere Auto-Orientar e reanalisar.
+   - **Treinamento Contínuo Local (`memoria_ia.json`):**
+     - A cada confirmação (ou ao clicar em **Ensinar IA**), o sistema aprende variações de grafia/ruído de OCR (ex: `ferrelra -> ferreira`) e padrões de documentos daquele aluno.
+     - Você também pode clicar em **Ignorar Nome** para ensinar a IA a ignorar nomes recorrentes de coordenadores, diretores ou secretários.
+5. **Painel de Estatísticas & Métricas de Produtividade (100% Offline):**
+   - Nova aba dedicada com indicadores em tempo real:
+     - **KPIs:** Concluídos x Pendentes, Velocidade (PDFs/min e seg/arquivo), Tempo de Sessão e Estimativa de Conclusão (ETA).
+     - **Regras de Nomenclatura:** Gráficos de progresso segmentados pelas 3 prioridades (Matrícula, CPF e Nome Completo).
+     - **Eficiência OCR:** Semáforo consolidado de leituras (Verde OK, Amarelo Revisão, Vermelho Dúvida e Não Analisados).
+     - **Volume Diário & Histórico:** Gráfico de colunas de volume de renomeação por dia e tabela detalhada das últimas 30 operações registradas no log.
+5. **Exportação de Planilha de Conferência Final (`📥 Baixar Conferência`):**
+   - Baixa uma planilha `.xlsx` / `.csv` listando todos os alunos **Concluídos**, **Faltantes (Sem PDF)** e **Extras (Fora da planilha)**.
+6. **Desfazer Universal (`[Z]` / `Ctrl+Z`):**
+   - Reverte renomeações, divisões, junções, anexações, rotações e recortes na mesma hora!

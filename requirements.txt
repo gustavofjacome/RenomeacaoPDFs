@@ -1,4 +1,7 @@
-# O script funciona mesmo sem dependências externas para ler .xlsx e .csv!
-# Porém, recomendamos instalar o pypdf (--user, sem precisar de admin) para dividir PDFs no Windows:
+# O sistema possui leitores nativos e funciona mesmo em ambientes restritos.
+# Recomendamos instalar o PyMuPDF (substituto moderno e oficial do antigo 'fitz')
+# para habilitar: juntar/dividir PDF, girar páginas, recortar bordas pretas,
+# recorte visual por página e leitura automática de nomes:
+pymupdf>=1.24.0
 pypdf>=4.0.0
 openpyxl>=3.1.0

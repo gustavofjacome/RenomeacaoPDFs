@@ -3,5 +3,10 @@ __pycache__/
 .progresso.txt
 renomeacao.log
 relatorio_final.txt
+relatorio_conferencia.csv
+relatorio_conferencia.xlsx
 nomes_colados.csv
+memoria_ia.json
+planilha_importada.*
 pdfs/.backup_divididos/
+pdfs/*.pdf

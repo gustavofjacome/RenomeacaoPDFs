@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Renomeador de PDFs v6.5</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+  <!-- CABEÇALHO PRINCIPAL E NAVEGAÇÃO POR ABAS -->
+  <header class="topbar">
+    <div class="brand-group">
+      <div class="brand">
+        <i class="fa-solid fa-file-pdf brand-icon"></i>
+        <span>Renomeador de PDFs</span>
+        <span class="version-pill">v6.5</span>
+      </div>
+
+      <nav class="main-tabs">
+        <button class="tab-btn active" id="tab-btn-operacao" onclick="alternarAba('operacao')">
+          <i class="fa-solid fa-columns"></i>
+          <span>Painel de Operação</span>
+        </button>
+        <button class="tab-btn" id="tab-btn-dados" onclick="alternarAba('dados')">
+          <i class="fa-solid fa-table-list"></i>
+          <span>Dados e Planilha</span>
+          <span class="tab-counter" id="lbl-tab-total">0</span>
+        </button>
+        <button class="tab-btn" id="tab-btn-estatisticas" onclick="alternarAba('estatisticas')">
+          <i class="fa-solid fa-chart-pie"></i>
+          <span>Estatísticas & Métricas</span>
+        </button>
+      </nav>
+    </div>
+
+    <div class="header-progress">
+      <span id="lbl-progresso">0 / 0</span>
+      <div class="progress-track">
+        <div class="progress-fill" id="barra-progresso"></div>
+      </div>
+      <span class="session-stat">
+        <i class="fa-solid fa-check-double"></i>
+        Sessão: <strong id="lbl-renomeados">0</strong>
+      </span>
+      <span class="session-stat" title="Padrões aprendidos e confirmações registradas na memória da IA (memoria_ia.json)">
+        <i class="fa-solid fa-brain icon-accent"></i>
+        IA: <strong id="lbl-ia-regras">0</strong>
+      </span>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn-ghost" onclick="diagnosticarFilaOCR()" title="Analisar PDFs da fila com IA/OCR local e colorir status (Verde / Amarelo / Vermelho)">
+        <i class="fa-solid fa-microchip icon-accent"></i>
+        <span>Verificar Fila OCR</span>
+      </button>
+      <button class="btn-ghost" onclick="executarAutoLote()" title="Auto-renomear apenas os PDFs confirmados em verde e parar nos amarelos/vermelhos (Tecla I)">
+        <i class="fa-solid fa-bolt icon-accent"></i>
+        <span>Auto-Renomear OK</span>
+        <kbd>I</kbd>
+      </button>
+      <button class="btn-ghost" id="btn-undo" onclick="desfazerUltimo()" title="Desfazer última ação (Tecla Z)">
+        <i class="fa-solid fa-rotate-left"></i>
+        <span>Desfazer</span>
+        <kbd>Z</kbd>
+      </button>
+      <a class="btn-ghost" href="/api/export_report" target="_blank" title="Exportar Planilha de Conferência (.xlsx / .csv)">
+        <i class="fa-solid fa-file-export"></i>
+        <span>Exportar</span>
+      </a>
+      <button class="btn-ghost" onclick="reescanearPasta()" title="Atualizar pasta pdfs/">
+        <i class="fa-solid fa-arrows-rotate"></i>
+      </button>
+      <button class="btn-ghost" onclick="abrirModalAtalhos()" title="Lista completa de atalhos do teclado (Tecla ?)">
+        <i class="fa-solid fa-keyboard"></i>
+        <span>Atalhos</span>
+        <kbd>?</kbd>
+      </button>
+    </div>
+  </header>
+
+  <!-- ======================================================================= -->
+  <!-- ABA 1: PAINEL DE OPERAÇÃO (TUDO EM UMA TELA)                            -->
+  <!-- ======================================================================= -->
+  <main class="view-tab active" id="aba-operacao">
+    <!-- ESQUERDA: VISUALIZADOR E EDIÇÃO DE PÁGINA -->
+    <section class="pdf-section">
+      <div class="pdf-bar">
+        <div class="pdf-meta">
+          <i class="fa-regular fa-file-pdf"></i>
+          <span class="pdf-name" id="lbl-pdf-nome">—</span>
+          <span class="pdf-pos" id="lbl-pdf-pos">(0 / 0)</span>
+          <span class="tag-badge" id="badge-paginas" onclick="alternarGaveta('gaveta-dividir')">—</span>
+          <span class="tag-badge danger" id="badge-brancas" style="display:none;" onclick="removerPaginasBrancas()" title="Clique para remover páginas em branco"></span>
+        </div>
+
+        <div class="pdf-tools">
+          <button class="btn-tool" onclick="girarPdf(-90, 0)" title="Girar 90 graus para a esquerda">
+            <i class="fa-solid fa-rotate-left"></i>
+            <span>90° Esq</span>
+          </button>
+          <button class="btn-tool" onclick="girarPdf(90, 0)" title="Girar 90 graus para a direita (Tecla R)">
+            <i class="fa-solid fa-rotate-right"></i>
+            <span>90° Dir</span>
+            <kbd>R</kbd>
+          </button>
+          <button class="btn-tool" onclick="girarPdf(180, 0)" title="Girar 180 graus">
+            <i class="fa-solid fa-arrows-up-down"></i>
+            <span>180°</span>
+          </button>
+          <button class="btn-tool" onclick="autoOrientarPdf()" title="Detectar orientação do texto e corrigir automaticamente">
+            <i class="fa-solid fa-compass"></i>
+            <span>Auto-Orientar</span>
+          </button>
+          <button class="btn-tool" onclick="autoLimparBordas(0)" title="Remover bordas pretas de scanner das margens">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+            <span>Limpar Bordas</span>
+          </button>
+          <button class="btn-tool" id="btn-abrir-crop" onclick="alternarModoRecorte()" title="Abrir editor visual de página para recortar com o mouse ou excluir/inverter páginas (Tecla C)">
+            <i class="fa-solid fa-crop-simple"></i>
+            <span>Recortar Página</span>
+            <kbd>C</kbd>
+          </button>
+        </div>
+      </div>
+
+      <div class="pdf-viewport">
+        <iframe id="pdf-frame" title="Visualizador de PDF"></iframe>
+
+        <!-- EDITOR VISUAL DE RECORTE POR PÁGINA -->
+        <div id="crop-overlay">
+          <div class="crop-toolbar">
+            <div class="crop-nav">
+              <span class="crop-title"><i class="fa-solid fa-crop-simple"></i> Editor de Página</span>
+              <button class="btn-tool" onclick="mudarPaginaCrop(-1)"><i class="fa-solid fa-chevron-left"></i></button>
+              <span id="lbl-crop-pag">Página 1 / 1</span>
+              <button class="btn-tool" onclick="mudarPaginaCrop(1)"><i class="fa-solid fa-chevron-right"></i></button>
+              <span class="crop-hint">Arraste o mouse sobre a página para selecionar a área de recorte</span>
+            </div>
+            <div class="crop-actions">
+              <label class="crop-check">
+                <input type="checkbox" id="chk-crop-todas">
+                <span>Aplicar em todas as páginas</span>
+              </label>
+              <button class="btn-tool" onclick="autoLimparBordas(paginaCropAtual)" title="Cortar bordas pretas desta página">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> Auto-Bordas
+              </button>
+              <button class="btn-tool" onclick="inverterOrdemPaginas()" title="Inverter a ordem das páginas do PDF">
+                <i class="fa-solid fa-right-left"></i> Inverter Ordem
+              </button>
+              <button class="btn-tool danger" onclick="excluirPaginaAtualCrop()" title="Excluir esta página do PDF">
+                <i class="fa-solid fa-trash-can"></i> Excluir Página
+              </button>
+              <button class="btn-confirm-sm" onclick="confirmarRecorteManual()">
+                <i class="fa-solid fa-check"></i> Aplicar Recorte
+              </button>
+              <button class="btn-tool" onclick="fecharModoRecorte()">
+                <i class="fa-solid fa-xmark"></i> Fechar
+              </button>
+            </div>
+          </div>
+          <div class="crop-canvas-area">
+            <div class="crop-stage" id="crop-stage">
+              <img id="crop-img" alt="Página do PDF" draggable="false">
+              <div id="crop-rect"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ESTADO VAZIO (TODOS OS PDFs CONCLUÍDOS) -->
+        <div class="empty-box" id="empty-state" style="display:none;">
+          <div class="empty-icon"><i class="fa-solid fa-circle-check"></i></div>
+          <h3>Nenhum PDF pendente</h3>
+          <p id="empty-msg">Todos os arquivos da pasta <code>pdfs/</code> foram processados.</p>
+          <div class="empty-actions">
+            <button class="btn-ghost" onclick="reescanearPasta()">
+              <i class="fa-solid fa-arrows-rotate"></i>
+              <span>Verificar Pasta</span>
+            </button>
+            <a class="btn-ghost" href="/api/export_report" target="_blank">
+              <i class="fa-solid fa-file-export"></i>
+              <span>Baixar Relatório Final</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DIREITA: CARTÃO DO ALUNO ATUAL + COMANDOS + FILA VISUAL -->
+    <aside class="sidebar">
+      <div class="current-card" id="card-aluno-atual">
+        <div class="section-label">
+          <span><i class="fa-solid fa-user-graduate"></i> Aluno Selecionado (<span id="lbl-item-idx">#—</span>)</span>
+          <span class="prio-badge" id="lbl-prioridade">Prioridade 1</span>
+        </div>
+
+        <div class="person-name" id="lbl-aluno-nome">—</div>
+        <div class="person-id" id="lbl-aluno-mat">—</div>
+
+        <!-- RESUMO DE TRANSIÇÃO: ARQUIVO ATUAL -> ARQUIVO FINAL -->
+        <div class="rename-preview-box">
+          <div class="rename-from">
+            <span class="meta-label">Arquivo atual:</span>
+            <code id="lbl-preview-origem">—.pdf</code>
+          </div>
+          <i class="fa-solid fa-arrow-right rename-arrow"></i>
+          <div class="rename-to">
+            <span class="meta-label">Pós-renomeado:</span>
+            <code id="lbl-aluno-formatado">—.pdf</code>
+          </div>
+        </div>
+
+        <!-- ALERTA DE ALUNO JÁ RENOMEADO NA PASTA -->
+        <div class="status-banner warn" id="banner-duplicado" style="display:none;">
+          <div class="banner-text">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span id="txt-duplicado">Já existe PDF deste aluno na pasta.</span>
+          </div>
+          <button class="btn-banner" onclick="confirmarJuntandoAoExistente()">
+            <i class="fa-solid fa-file-circle-plus"></i> Juntar ao existente
+          </button>
+        </div>
+
+        <!-- DIAGNÓSTICO DO OCR LOCAL + ANÁLISE DE CAUSA E SUGESTÕES INTELIGENTES DA IA -->
+        <div class="status-banner ai-diagnostic-panel" id="banner-ia" style="display:none;">
+          <div class="ai-banner-top">
+            <div class="banner-text">
+              <i id="ico-ia" class="fa-solid fa-circle-info"></i>
+              <span id="txt-ia">—</span>
+            </div>
+            <div class="banner-actions">
+              <button class="btn-banner" onclick="ensinarIAApenasPadrao()" title="Ensinar a IA que este formato de documento pertence ao aluno selecionado">
+                <i class="fa-solid fa-graduation-cap"></i> Ensinar IA
+              </button>
+              <button class="btn-banner" onclick="ignorarTermoRapido()" title="Informar um nome recorrente (ex: coordenador, diretor, familiar) para a IA ignorar nos PDFs">
+                <i class="fa-solid fa-eye-slash"></i> Ignorar Nome
+              </button>
+            </div>
+          </div>
+
+          <!-- EXPLICAÇÃO DA IA: O QUE PODE TER ACONTECIDO? -->
+          <div class="ai-cause-box" id="box-diag-causa" style="display:none;">
+            <div class="ai-cause-title">
+              <i class="fa-solid fa-wand-magic-sparkles"></i>
+              <span id="lbl-diag-titulo">Análise da IA</span>
+            </div>
+            <p class="ai-cause-desc" id="lbl-diag-explicacao">—</p>
+          </div>
+
+          <!-- BOTÕES DE SUGESTÃO INTELIGENTE (1 CLIQUE) -->
+          <div class="ai-suggestions-bar" id="box-sugestoes-ia"></div>
+        </div>
+      </div>
+
+      <!-- BOTÕES DE AÇÃO -->
+      <div class="controls-block">
+        <button class="btn-primary" id="btn-confirmar" onclick="confirmarAtual()">
+          <span class="btn-label">
+            <i class="fa-solid fa-check"></i>
+            <span>Confirmar e Renomear</span>
+          </span>
+          <kbd>S / Enter</kbd>
+        </button>
+
+        <div class="btn-grid">
+          <button class="btn-secondary" onclick="alternarGaveta('gaveta-editar')" title="Editar manualmente ou cadastrar pessoa fora da planilha">
+            <span class="btn-label">
+              <i class="fa-solid fa-pen-to-square"></i>
+              <span>Editar / Extra</span>
+            </span>
+            <kbd>E</kbd>
+          </button>
+          <button class="btn-secondary" onclick="alternarGaveta('gaveta-dividir')" title="Dividir PDF com 2 ou mais pessoas">
+            <span class="btn-label">
+              <i class="fa-solid fa-scissors"></i>
+              <span>Dividir PDF</span>
+            </span>
+            <kbd>D</kbd>
+          </button>
+          <button class="btn-secondary" onclick="alternarGaveta('gaveta-juntar')" title="Juntar este PDF com o(s) próximo(s) da fila">
+            <span class="btn-label">
+              <i class="fa-solid fa-object-group"></i>
+              <span>Juntar PDFs</span>
+            </span>
+            <kbd>J</kbd>
+          </button>
+          <button class="btn-secondary" id="btn-anexar-ant" onclick="anexarAoAnterior()" title="Colar este PDF no final do último aluno já renomeado">
+            <span class="btn-label">
+              <i class="fa-solid fa-file-circle-plus"></i>
+              <span>Anexar ao Anterior</span>
+            </span>
+            <kbd>A</kbd>
+          </button>
+          <button class="btn-secondary" onclick="pularNome()" title="Pular o nome atual da planilha (aluno faltante) mantendo o PDF">
+            <span class="btn-label">
+              <i class="fa-solid fa-user-xmark"></i>
+              <span>Pular Nome</span>
+            </span>
+            <kbd>N</kbd>
+          </button>
+          <button class="btn-secondary" onclick="pularPdf()" title="Pular este arquivo PDF mantendo o aluno atual na fila">
+            <span class="btn-label">
+              <i class="fa-solid fa-forward-step"></i>
+              <span>Pular PDF</span>
+            </span>
+            <kbd>P</kbd>
+          </button>
+        </div>
+      </div>
+
+      <!-- GAVETA: EDITAR MANUALMENTE -->
+      <div class="panel-drawer" id="gaveta-editar">
+        <div class="drawer-header">
+          <span><i class="fa-solid fa-pen-to-square"></i> Edição Manual (3 Prioridades)</span>
+          <button class="btn-icon" onclick="fecharGavetas()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <input type="text" id="inp-edit-nome" class="input-clean"
+               placeholder="Nome Completo (ou Nome + Matrícula/CPF)"
+               oninput="atualizarPreviewEdicao()"
+               onkeydown="if(event.key==='Enter'){salvarEdicaoManual();} else if(event.key==='Escape'){fecharGavetas();}">
+        <div class="btn-grid" style="margin-bottom:6px;">
+          <input type="text" id="inp-edit-mat" class="input-clean" style="margin:0;"
+                 placeholder="Matrícula (ou 'não consta')"
+                 oninput="atualizarPreviewEdicao()"
+                 onkeydown="if(event.key==='Enter'){salvarEdicaoManual();}">
+          <input type="text" id="inp-edit-cpf" class="input-clean" style="margin:0;"
+                 placeholder="CPF (se sem matrícula)"
+                 oninput="atualizarPreviewEdicao()"
+                 onkeydown="if(event.key==='Enter'){salvarEdicaoManual();}">
+        </div>
+        <div class="preview-line" id="preview-edit-formatado">Arquivo: —</div>
+        <div class="radio-group">
+          <label>
+            <input type="radio" name="modo-edit" value="extra" checked>
+            <span>Pessoa fora da planilha (manter aluno atual na fila)</span>
+          </label>
+          <label>
+            <input type="radio" name="modo-edit" value="substituir">
+            <span>Substituir o aluno atual da fila</span>
+          </label>
+        </div>
+        <div class="btn-grid">
+          <button class="btn-primary btn-sm" onclick="salvarEdicaoManual()">
+            <i class="fa-solid fa-check"></i> Salvar e Renomear
+          </button>
+          <button class="btn-secondary btn-sm" onclick="fecharGavetas()">Cancelar</button>
+        </div>
+      </div>
+
+      <!-- GAVETA: DIVIDIR PDF -->
+      <div class="panel-drawer" id="gaveta-dividir">
+        <div class="drawer-header">
+          <span id="lbl-info-divisao"><i class="fa-solid fa-scissors"></i> Dividir PDF</span>
+          <button class="btn-icon" onclick="fecharGavetas()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="drawer-stack">
+          <button class="btn-primary btn-sm" onclick="executarDivisao('corte', 1, true)">
+            <i class="fa-solid fa-bolt"></i> Separar Pág. 1 (já renomear) + Restante
+          </button>
+          <div class="inline-form">
+            <span>1ª parte até pág.:</span>
+            <input type="number" id="inp-corte-pag" value="1" min="1" max="99" class="input-clean input-num">
+            <button class="btn-secondary btn-sm" style="flex:1;" onclick="executarDivisaoCustom()">Cortar nesta página</button>
+          </div>
+          <div class="btn-grid">
+            <button class="btn-secondary btn-sm" onclick="executarDivisao('todas', 1, false)">
+              <i class="fa-regular fa-copy"></i> 1 PDF por página
+            </button>
+            <button class="btn-secondary btn-sm" onclick="executarDivisao('duplicar', 1, true)">
+              <i class="fa-solid fa-clone"></i> Duplicar arquivo
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- GAVETA: JUNTAR PDFs -->
+      <div class="panel-drawer" id="gaveta-juntar">
+        <div class="drawer-header">
+          <span><i class="fa-solid fa-object-group"></i> Juntar PDFs da Fila</span>
+          <button class="btn-icon" onclick="fecharGavetas()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <p class="drawer-sub" id="lbl-info-juntar">Une o PDF atual com o próximo PDF em um único documento.</p>
+        <div class="drawer-stack">
+          <button class="btn-primary btn-sm" onclick="executarJuncao(2)">
+            <i class="fa-solid fa-link"></i> Juntar PDF Atual + Próximo PDF (2 arquivos)
+          </button>
+          <div class="inline-form">
+            <span>Juntar seguidos:</span>
+            <input type="number" id="inp-qtd-juntar" value="3" min="2" max="30" class="input-clean input-num">
+            <button class="btn-secondary btn-sm" style="flex:1;" onclick="executarJuncaoCustom()">Juntar N PDFs</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- LISTA VISUAL DE PROCESSOS COM SEMÁFORO OCR -->
+      <div class="queue-section">
+        <div class="queue-header-bar">
+          <span class="queue-title"><i class="fa-solid fa-list-check"></i> Fila de Processos</span>
+          <div class="ocr-legend" title="Legenda do Diagnóstico OCR: Verde = Confirmado | Amarelo = Revisar (Grupo/Fora de ordem/Familiar) | Vermelho = Não lido">
+            <span class="dot verde"></span> OK
+            <span class="dot amarelo"></span> Revisar
+            <span class="dot vermelho"></span> Dúvida
+          </div>
+        </div>
+
+        <div class="search-wrap">
+          <i class="fa-solid fa-magnifying-glass search-icon"></i>
+          <input type="text" id="inp-busca" class="search-input"
+                 placeholder="Buscar por nome, matrícula ou CPF (Tecla B)..."
+                 oninput="renderizarListaNomes()"
+                 onkeydown="if(event.key==='Escape'){this.value=''; renderizarListaNomes(); this.blur();}">
+        </div>
+
+        <div class="queue-list" id="lista-nomes"></div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- ======================================================================= -->
+  <!-- ABA 2: DADOS E PLANILHA (UPLOAD DIRETO, CADASTRO MANUAL E CONFERÊNCIA)  -->
+  <!-- ======================================================================= -->
+  <section class="view-tab" id="aba-dados">
+    <div class="data-container">
+      <!-- COLUNA ESQUERDA: FONTES DE DADOS (UPLOAD, COLAR DO EXCEL, ADICIONAR INDIVIDUAL) -->
+      <div class="data-forms-col">
+        <div class="data-card">
+          <h3><i class="fa-solid fa-file-arrow-up"></i> Subir Planilha (.xlsx ou .csv)</h3>
+          <p>Envie uma planilha diretamente do computador ou recarregue o arquivo padrão.</p>
+          <label class="upload-dropzone" id="dropzone-arquivo">
+            <input type="file" id="inp-file-upload" accept=".xlsx,.csv,.tsv,.txt" onchange="enviarArquivoPlanilha(this)" hidden>
+            <i class="fa-solid fa-cloud-arrow-up upload-icon"></i>
+            <span>Clique para escolher arquivo <strong>.xlsx / .csv</strong></span>
+            <small id="lbl-planilha-ativa">Ativa: nomes.xlsx</small>
+          </label>
+          <button class="btn-secondary btn-sm" style="width:100%; margin-top:8px;" onclick="recarregarPlanilhaDisco()">
+            <i class="fa-solid fa-rotate"></i> Recarregar nomes.xlsx padrão
+          </button>
+        </div>
+
+        <div class="data-card">
+          <h3><i class="fa-solid fa-user-plus"></i> Adicionar Aluno Manualmente</h3>
+          <p>Cadastre alunos na fila sem precisar de planilha Excel.</p>
+          <input type="text" id="inp-add-nome" class="input-clean" placeholder="Nome Completo do Aluno">
+          <div class="btn-grid" style="margin-bottom:6px;">
+            <input type="text" id="inp-add-mat" class="input-clean" style="margin:0;" placeholder="Matrícula (ou 'não consta')">
+            <input type="text" id="inp-add-cpf" class="input-clean" style="margin:0;" placeholder="CPF (opcional)">
+          </div>
+          <button class="btn-primary btn-sm" onclick="adicionarPessoaManual()">
+            <i class="fa-solid fa-plus"></i> Adicionar à Fila
+          </button>
+        </div>
+
+        <div class="data-card">
+          <h3><i class="fa-solid fa-paste"></i> Colar Lista Direto (Excel / Texto)</h3>
+          <p>Cole linhas com 1, 2 ou 3 colunas (Nome, Matrícula, CPF).</p>
+          <textarea id="txt-colar-excel" class="input-clean" style="height:85px; font-family:monospace; font-size:11.5px;"
+                    placeholder="Gustavo Ferreira Jácome de Lira&#9;20201011100005&#10;Maria das Dores&#9;Não consta&#9;123.456.789-00"></textarea>
+          <button class="btn-primary btn-sm" onclick="enviarPlanilhaColada()">
+            <i class="fa-solid fa-bolt"></i> Substituir Fila pelos Dados Colados
+          </button>
+        </div>
+
+        <div class="data-card">
+          <h3><i class="fa-solid fa-brain"></i> Memória de Aprendizado da IA (<code>memoria_ia.json</code>)</h3>
+          <p>A IA aprende automaticamente com suas confirmações e correções de OCR ao longo do tempo.</p>
+          <div class="ai-stats-grid">
+            <div class="ai-stat-item">
+              <strong id="lbl-mem-confirmacoes">0</strong>
+              <span>Confirmações</span>
+            </div>
+            <div class="ai-stat-item">
+              <strong id="lbl-mem-variacoes">0</strong>
+              <span>Correções OCR</span>
+            </div>
+            <div class="ai-stat-item">
+              <strong id="lbl-mem-padroes">0</strong>
+              <span>Padrões Alunos</span>
+            </div>
+          </div>
+
+          <div class="inline-form" style="margin-top:8px;">
+            <input type="text" id="inp-ignorar-termo" class="input-clean" style="margin:0; flex:1;"
+                   placeholder="Nome p/ ignorar (ex: coordenador, diretor)"
+                   onkeydown="if(event.key==='Enter'){adicionarTermoIgnoradoPainel();}">
+            <button class="btn-secondary btn-sm" onclick="adicionarTermoIgnoradoPainel()">
+              <i class="fa-solid fa-eye-slash"></i> Ignorar
+            </button>
+          </div>
+
+          <div id="box-termos-ignorados" class="ai-tags-wrap" style="margin-top:6px;"></div>
+          <div id="box-ultimos-aprendizados" class="ai-history-list" style="margin-top:6px;"></div>
+        </div>
+      </div>
+
+      <!-- COLUNA DIREITA: TABELA COMPLETA DE AUDITORIA E DADOS -->
+      <div class="data-table-col">
+        <div class="table-header-bar">
+          <div>
+            <h3><i class="fa-solid fa-table"></i> Tabela Geral de Processos e Diagnóstico</h3>
+            <p class="sub-text">Visualize a regra aplicada em cada aluno, o arquivo vinculado e o status de leitura OCR.</p>
+          </div>
+          <div class="table-actions">
+            <button class="btn-ghost" onclick="diagnosticarFilaOCR()">
+              <i class="fa-solid fa-microchip"></i> Diagnosticar Fila c/ OCR
+            </button>
+            <a class="btn-ghost" href="/api/export_report" target="_blank">
+              <i class="fa-solid fa-download"></i> Baixar Excel (.xlsx)
+            </a>
+          </div>
+        </div>
+
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Nome Completo</th>
+                <th>Matrícula / CPF</th>
+                <th>Prioridade</th>
+                <th>PDF Origem / Final</th>
+                <th>Status / OCR</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-dados"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================================= -->
+  <!-- ABA 3: PAINEL DE ESTATÍSTICAS E MÉTRICAS DE PRODUTIVIDADE (100% OFFLINE) -->
+  <!-- ======================================================================= -->
+  <section class="view-tab" id="aba-estatisticas">
+    <div class="stats-container">
+      
+      <!-- CARDS DE MÉTRICAS RÁPIDAS (KPIs) -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-icon accent"><i class="fa-solid fa-file-circle-check"></i></div>
+          <div class="kpi-info">
+            <span class="kpi-title">Concluídos na Planilha</span>
+            <div class="kpi-value"><strong id="kpi-concluidos">0</strong> <span id="kpi-concluidos-pct">/ 0 (0%)</span></div>
+            <span class="kpi-sub" id="kpi-pendentes-txt">0 pendentes</span>
+          </div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-icon info"><i class="fa-solid fa-bolt"></i></div>
+          <div class="kpi-info">
+            <span class="kpi-title">Velocidade da Sessão</span>
+            <div class="kpi-value"><strong id="kpi-ritmo">0.0</strong> <span>PDFs/min</span></div>
+            <span class="kpi-sub" id="kpi-seg-pdf">0 seg/arquivo · Tempo: 0 min</span>
+          </div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-icon warning"><i class="fa-solid fa-hourglass-half"></i></div>
+          <div class="kpi-info">
+            <span class="kpi-title">Estimativa p/ Concluir (ETA)</span>
+            <div class="kpi-value"><strong id="kpi-eta">0</strong> <span>minutos</span></div>
+            <span class="kpi-sub" id="kpi-fila-restante">0 PDFs restantes na fila</span>
+          </div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-icon purple"><i class="fa-solid fa-calendar-check"></i></div>
+          <div class="kpi-info">
+            <span class="kpi-title">Histórico de Hoje</span>
+            <div class="kpi-value"><strong id="kpi-hoje">0</strong> <span>renomeados</span></div>
+            <span class="kpi-sub" id="kpi-total-historico">Total acumulado: 0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- GRID DE DETALHAMENTO: GRÁFICOS VISUAIS E TABELAS ANALÍTICAS -->
+      <div class="stats-charts-grid">
+        
+        <!-- CARD 1: DISTRIBUIÇÃO DAS 3 REGRAS DE PRIORIDADE -->
+        <div class="chart-card">
+          <div class="chart-card-header">
+            <h4><i class="fa-solid fa-layer-group icon-accent"></i> Regras de Nomenclatura (3 Prioridades)</h4>
+            <span class="badge-pill">Hierarquia</span>
+          </div>
+          <div class="prio-bars-list" id="stats-prio-bars">
+            <!-- Renderizado dinamicamente via JS -->
+          </div>
+        </div>
+
+        <!-- CARD 2: EFICIÊNCIA DO OCR LOCAL & IA -->
+        <div class="chart-card">
+          <div class="chart-card-header">
+            <h4><i class="fa-solid fa-microchip icon-accent"></i> Diagnóstico de Leitura OCR</h4>
+            <span class="badge-pill">Semáforo</span>
+          </div>
+          <div class="ocr-stat-grid" id="stats-ocr-bars">
+            <!-- Renderizado dinamicamente via JS -->
+          </div>
+        </div>
+
+        <!-- CARD 3: OPERAÇÕES REALIZADAS NESTA SESSÃO -->
+        <div class="chart-card">
+          <div class="chart-card-header">
+            <h4><i class="fa-solid fa-sliders icon-accent"></i> Ações Aplicadas na Sessão</h4>
+            <span class="badge-pill">Sessão Atual</span>
+          </div>
+          <div class="ops-badges-grid" id="stats-ops-badges">
+            <!-- Renderizado dinamicamente via JS -->
+          </div>
+        </div>
+
+        <!-- CARD 4: PRODUTIVIDADE RECENTE (DIAS E HORAS) -->
+        <div class="chart-card">
+          <div class="chart-card-header">
+            <h4><i class="fa-solid fa-chart-column icon-accent"></i> Volume Recente por Dia</h4>
+            <span class="badge-pill">Últimos Dias</span>
+          </div>
+          <div class="bar-chart-visual" id="stats-bar-chart">
+            <!-- Gráfico de barras puro CSS/JS -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- HISTÓRICO DAS ÚLTIMAS OPERAÇÕES DO LOG -->
+      <div class="stats-log-card">
+        <div class="chart-card-header">
+          <h4><i class="fa-solid fa-clock-rotate-left icon-accent"></i> Últimas 30 Renomeações Registradas no Log</h4>
+          <a class="btn-ghost" href="/api/export_report" target="_blank">
+            <i class="fa-solid fa-file-export"></i> Baixar Planilha de Auditoria
+          </a>
+        </div>
+        <div class="table-scroll" style="max-height: 280px;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Horário</th>
+                <th>Tipo</th>
+                <th>Arquivo Original</th>
+                <th>Arquivo Renomeado / Destino</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-log-stats"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ======================================================================= -->
+  <!-- MODAL POPUP DE ATALHOS DO TECLADO                                       -->
+  <!-- ======================================================================= -->
+  <div class="modal-backdrop" id="modal-atalhos" onclick="if(event.target===this) fecharModalAtalhos();">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-keyboard"></i> Atalhos Rápidos do Teclado</h3>
+        <button class="btn-icon" onclick="fecharModalAtalhos()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="shortcut-group">
+          <h4>Renomeação e Fila</h4>
+          <div class="sc-row"><kbd>S</kbd> ou <kbd>Enter</kbd> <span>Confirmar aluno atual e renomear PDF</span></div>
+          <div class="sc-row"><kbd>E</kbd> <span>Abrir gaveta de Edição Manual / Pessoa Extra</span></div>
+          <div class="sc-row"><kbd>B</kbd> ou <kbd>/</kbd> <span>Focar na caixa de Busca da fila</span></div>
+          <div class="sc-row"><kbd>N</kbd> <span>Pular Nome da fila (aluno sem PDF)</span></div>
+          <div class="sc-row"><kbd>P</kbd> <span>Pular Arquivo PDF atual</span></div>
+          <div class="sc-row"><kbd>I</kbd> <span>Auto-renomear PDFs confirmados pelo OCR (Verde)</span></div>
+          <div class="sc-row"><kbd>Z</kbd> ou <kbd>Ctrl+Z</kbd> <span>Desfazer última ação imediatamente</span></div>
+        </div>
+        <div class="shortcut-group">
+          <h4>Manipulação e Edição de PDF</h4>
+          <div class="sc-row"><kbd>D</kbd> <span>Dividir PDF (separar páginas de 2+ pessoas)</span></div>
+          <div class="sc-row"><kbd>J</kbd> <span>Juntar PDF atual com o(s) próximo(s) da fila</span></div>
+          <div class="sc-row"><kbd>A</kbd> <span>Anexar este PDF ao final do último aluno já renomeado</span></div>
+          <div class="sc-row"><kbd>R</kbd> <span>Girar páginas do PDF em 90° para a direita</span></div>
+          <div class="sc-row"><kbd>C</kbd> <span>Abrir Editor Visual de Página (Recortar com o mouse / Excluir pág.)</span></div>
+          <div class="sc-row"><kbd>?</kbd> <span>Abrir / fechar esta janela de atalhos</span></div>
+          <div class="sc-row"><kbd>Esc</kbd> <span>Fechar gavetas, recorte ou modais abertos</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-status">
+      <i class="fa-solid fa-circle-info"></i>
+      <span id="status-toast">Sistema pronto</span>
+    </div>
+    <div class="footer-hints">
+      <span><kbd>S</kbd> Confirmar</span>
+      <span><kbd>E</kbd> Editar</span>
+      <span><kbd>D</kbd> Dividir</span>
+      <span><kbd>J</kbd> Juntar</span>
+      <span><kbd>A</kbd> Anexar Anterior</span>
+      <span><kbd>R</kbd> Girar</span>
+      <span><kbd>C</kbd> Recortar</span>
+      <span><kbd>?</kbd> Atalhos</span>
+    </div>
+  </footer>
+
+  <link rel="prefetch" id="pdf-prefetch" href="">
+  <script src="/app.js"></script>
+</body>
+</html>
