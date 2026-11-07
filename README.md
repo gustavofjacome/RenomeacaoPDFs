@@ -4,15 +4,45 @@ Sistema completo para renomear, dividir, juntar, girar, recortar e auditar PDFs 
 
 ---
 
-## 🚀 Como Iniciar a Interface Gráfica (Web GUI v6.0)
+## 🚀 Como Iniciar
 
 ### No Windows (PC do Trabalho)
-Basta dar **2 cliques no arquivo `iniciar_gui.bat`**!
+Basta dar **2 cliques no arquivo `iniciar_gui.bat`** na raiz (ou acessar a pasta `scripts/windows/`)!
 
-### No Terminal (Windows ou Linux)
+### No Terminal (Linux ou Windows)
 ```bash
 source .venv/bin/activate
-python gui.py
+python main.py             # Abre a Interface Web Local (Recomendado)
+python main.py --cli       # Modo Linha de Comando (Terminal)
+python main.py --undo      # Desfazer Renomeações em Lote
+```
+
+---
+
+## 📁 Estrutura Organizada do Repositório
+
+```text
+RenomeacaoPDFs/
+├── main.py                     # Ponto de entrada unificado (GUI, CLI, Undo)
+├── iniciar_gui.bat             # Atalho rápido para iniciar a interface gráfica
+├── nomes.xlsx                  # Planilha padrão de catalogação
+├── pdfs/                       # Pasta onde você coloca os PDFs para processar
+├── pyproject.toml              # Configuração de pacote Python instalável
+├── requirements.txt            # Dependências (pymupdf, pypdf, openpyxl, numpy)
+├── scripts/
+│   └── windows/                # Scripts utilitários para Windows (.bat)
+│       ├── iniciar_gui.bat     # Iniciar GUI v6.5
+│       ├── iniciar_cli.bat     # Iniciar modo CLI v6.0
+│       └── desfazer.bat        # Reversão via log
+└── src/
+    └── renomeador/             # Código-fonte modular do projeto
+        ├── core.py             # Motor de PDF, OCR leve, 3 prioridades e conferência
+        ├── gui.py              # Servidor HTTP local (127.0.0.1) e API REST
+        ├── desfazer.py         # Módulo utilitário de reversão
+        └── web/                # Interface Web limpa (HTML5, CSS3, JS Vanilla)
+            ├── index.html      # Estrutura e navegação por abas
+            ├── styles.css      # Design moderno escuro e responsivo
+            └── app.js          # Lógica frontend, editor de recorte e métricas
 ```
 
 ---

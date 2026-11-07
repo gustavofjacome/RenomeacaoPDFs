@@ -48,7 +48,11 @@ def registrar_reversao_no_log(log_file: Path, atual: str, original: str):
 
 
 def main(args):
-    script_dir = Path(__file__).resolve().parent
+    arquivo_atual = Path(__file__).resolve()
+    if arquivo_atual.parent.name == "renomeador" and arquivo_atual.parent.parent.name == "src":
+        script_dir = arquivo_atual.parent.parent.parent
+    else:
+        script_dir = arquivo_atual.parent
     pdfs_dir = Path(args.pasta_pdfs)
     if not pdfs_dir.is_absolute() and not pdfs_dir.exists():
         pdfs_dir = script_dir / args.pasta_pdfs

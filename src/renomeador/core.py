@@ -2735,7 +2735,11 @@ def exibir_painel_principal(
 
 def main(args):
     ativar_cores_windows()
-    script_dir = Path(__file__).resolve().parent
+    arquivo_atual = Path(__file__).resolve()
+    if arquivo_atual.parent.name == "renomeador" and arquivo_atual.parent.parent.name == "src":
+        script_dir = arquivo_atual.parent.parent.parent
+    else:
+        script_dir = arquivo_atual.parent
     planilha_path = Path(args.planilha)
     if not planilha_path.is_absolute() and not planilha_path.exists():
         planilha_path = script_dir / args.planilha

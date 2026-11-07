@@ -1,5 +1,6 @@
 __pycache__/
 *.pyc
+*.egg-info/
 .progresso.txt
 renomeacao.log
 relatorio_final.txt
@@ -10,3 +11,4 @@ memoria_ia.json
 planilha_importada.*
 pdfs/.backup_divididos/
 pdfs/*.pdf
+

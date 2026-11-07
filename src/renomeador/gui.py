@@ -22,7 +22,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-import renomear as core
+try:
+    from renomeador import core
+except ImportError:
+    import core  # type: ignore
 
 PORTA_PADRAO = 8765
 HOST_LOCAL = "127.0.0.1"
@@ -39,7 +42,9 @@ class EstadoGUI:
     def __init__(self, planilha_path: Path, pdfs_dir: Path, script_dir: Path):
         self.lock = threading.Lock()
         self.script_dir = script_dir
-        self.web_dir = script_dir / "web"
+        # Permite encontrar web/ tanto se estiver em src/renomeador/web quanto se estiver na raiz
+        pkg_web = Path(__file__).resolve().parent / "web"
+        self.web_dir = pkg_web if pkg_web.exists() else (script_dir / "web")
         self.planilha_path = planilha_path
         self.pdfs_dir = pdfs_dir
         self.log_path = script_dir / core.ARQUIVO_LOG
@@ -1500,7 +1505,13 @@ def main():
     )
     args = parser.parse_args()
 
-    script_dir = Path(__file__).resolve().parent
+    # Determinar a pasta de trabalho raiz do projeto (onde ficam nomes.xlsx e a pasta pdfs/)
+    # Se gui.py estiver em src/renomeador/gui.py, sobe dois níveis até a raiz
+    arquivo_gui = Path(__file__).resolve()
+    if arquivo_gui.parent.name == "renomeador" and arquivo_gui.parent.parent.name == "src":
+        script_dir = arquivo_gui.parent.parent.parent
+    else:
+        script_dir = arquivo_gui.parent
     planilha_path = Path(args.planilha)
     if not planilha_path.is_absolute() and not planilha_path.exists():
         planilha_path = script_dir / args.planilha
